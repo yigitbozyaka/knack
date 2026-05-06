@@ -80,6 +80,10 @@ PRs welcome — tools, fixes, polish, docs. Read [CONTRIBUTING.md](./CONTRIBUTIN
 
 If you're adding a new tool, [`CLAUDE.md`](./CLAUDE.md) has a step-by-step checklist.
 
+## Security
+
+Found something you think is a vulnerability? Please **don't** open a public issue. Email [security@knack.wtf](mailto:security@knack.wtf) — see [`SECURITY.md`](./SECURITY.md) for the full disclosure policy.
+
 ## License
 
 [MIT](./LICENSE) © 2025 Yigit Bozyaka
