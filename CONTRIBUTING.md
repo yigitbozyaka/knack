@@ -28,6 +28,25 @@ pnpm dev
 
 Open <http://localhost:3000>. See [README.md](./README.md) for the full quickstart.
 
+### Install gitleaks (recommended)
+
+The pre-commit hook runs [gitleaks](https://github.com/gitleaks/gitleaks) to catch accidentally committed secrets (API keys, tokens, credentials). It's optional locally — if gitleaks isn't installed, the hook prints a warning and skips. CI runs the same scan on every PR and **will block** a leak from landing.
+
+Install it once:
+
+```bash
+# macOS
+brew install gitleaks
+
+# Windows (Scoop)
+scoop install gitleaks
+
+# Linux / anywhere with Go
+go install github.com/gitleaks/gitleaks/v8@latest
+```
+
+Knack's gitleaks config lives at [`.gitleaks.toml`](./.gitleaks.toml). If you hit a false positive, open a PR adding the file to the allowlist (with a one-line comment explaining why).
+
 ## Branch naming
 
 Branch off `dev`, never off `master`. Use a short, descriptive, kebab-case branch name with a Conventional Commits-style prefix:

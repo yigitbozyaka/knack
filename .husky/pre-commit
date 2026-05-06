@@ -1,1 +1,16 @@
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --config .gitleaks.toml || {
+    echo ""
+    echo "gitleaks found a potential secret in your staged changes."
+    echo "Review the finding above. If it's a false positive, add it to"
+    echo ".gitleaks.toml's allowlist; otherwise remove the secret and"
+    echo "rotate it."
+    exit 1
+  }
+else
+  echo "gitleaks not installed locally — skipping secret scan."
+  echo "  install: https://github.com/gitleaks/gitleaks#installing"
+  echo "  CI will run the scan on push."
+fi
+
 pnpm lint-staged
