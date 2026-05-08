@@ -28,10 +28,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Full history on push/schedule so we scan the whole tree.
-          # PR runs use the default shallow checkout — gitleaks-action
-          # falls back to scanning the diff in that case.
-          fetch-depth: ${{ github.event_name == 'pull_request' && 1 || 0 }}
+          # gitleaks-action needs the parent commit of the first PR commit
+          # to compute the diff range, so fetch full history in every event.
+          fetch-depth: 0
 
       - name: Run gitleaks
         # TODO: pin by SHA once we've reviewed a known-good release.
