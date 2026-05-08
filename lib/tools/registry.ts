@@ -130,6 +130,14 @@ export const TOOLS: readonly Tool[] = [
     category: 'Network',
   },
   {
+    slug: 'notes',
+    name: 'Scratchpad',
+    description: 'Browser-local notes. No account, no server — stored only in this browser.',
+    icon: 'notebook-pen',
+    status: 'live',
+    category: 'Notes',
+  },
+  {
     slug: 'note',
     name: 'Burn-after-reading note',
     description: 'Encrypted note that destroys itself after the first read.',
