@@ -1,23 +1,9 @@
 import Link from 'next/link'
 
-import { eq } from 'drizzle-orm'
 import { UserIcon } from 'lucide-react'
 
 import { getCurrentAccount } from '@/lib/auth/account'
-import { db } from '@/lib/db/client'
-import { accounts } from '@/lib/db/schema'
 import { cn } from '@/lib/utils'
-
-async function getAccountReference(accountId: string): Promise<string | null> {
-  const rows = await db
-    .select({ tokenLookup: accounts.tokenLookup })
-    .from(accounts)
-    .where(eq(accounts.id, accountId))
-    .limit(1)
-  const row = rows[0]
-  if (!row) return null
-  return row.tokenLookup.slice(-4)
-}
 
 export async function AccountIndicator({ className }: { className?: string }) {
   const account = await getCurrentAccount()
@@ -33,7 +19,6 @@ export async function AccountIndicator({ className }: { className?: string }) {
     )
   }
 
-  const reference = await getAccountReference(account.id)
   return (
     <Link
       href="/account"
@@ -42,9 +27,10 @@ export async function AccountIndicator({ className }: { className?: string }) {
         className,
       )}
       aria-label="Account"
+      title={`Account ${account.id}`}
     >
       <UserIcon className="size-4" />
-      <span className="font-mono">{reference ?? '----'}</span>
+      <span className="font-mono">{account.id.slice(-4)}</span>
     </Link>
   )
 }
