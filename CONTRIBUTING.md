@@ -28,6 +28,25 @@ pnpm dev
 
 Open <http://localhost:3000>. See [README.md](./README.md) for the full quickstart.
 
+### Install gitleaks (recommended)
+
+The pre-commit hook runs [gitleaks](https://github.com/gitleaks/gitleaks) to catch accidentally committed secrets (API keys, tokens, credentials). It's optional locally — if gitleaks isn't installed, the hook prints a warning and skips. CI runs the same scan on every PR and **will block** a leak from landing.
+
+Install it once:
+
+```bash
+# macOS
+brew install gitleaks
+
+# Windows (Scoop)
+scoop install gitleaks
+
+# Linux / anywhere with Go
+go install github.com/gitleaks/gitleaks/v8@latest
+```
+
+Knack's gitleaks config lives at [`.gitleaks.toml`](./.gitleaks.toml). If you hit a false positive, open a PR adding the file to the allowlist (with a one-line comment explaining why).
+
 ## Branch naming
 
 Branch off `dev`, never off `master`. Use a short, descriptive, kebab-case branch name with a Conventional Commits-style prefix:
@@ -91,6 +110,32 @@ A few rules worth calling out (full list in [`CLAUDE.md`](./CLAUDE.md)):
 - Default to Server Components. Mark client only when needed.
 - Tailwind utility classes only (no inline `style` unless the value is dynamic).
 - Files: `kebab-case.ts`. Components: `PascalCase.tsx`. Hooks: `useThing.ts`. DB tables: `snake_case` plural.
+
+## Security
+
+Knack tools take user input and sometimes call third parties. Treat security as part of the diff, not a separate concern.
+
+### Disclosure
+
+If you think you've found a vulnerability, **don't** open a public issue. See [`SECURITY.md`](./SECURITY.md) for how to report.
+
+### Don't roll your own
+
+- **HTML in React** — React escapes by default. Don't use `dangerouslySetInnerHTML` on user input. For escaping into non-React boundaries (CSV cells, filenames, error strings echoed in JSON), use `escapeHtml` / `stripHtmlTags` from [`lib/security/sanitize.ts`](./lib/security/sanitize.ts).
+- **Outbound HTTP** — anything fetching a URL that came (directly or indirectly) from user input must go through `safeFetch` in [`lib/security/ssrf.ts`](./lib/security/ssrf.ts), never raw `fetch`. It validates the URL, blocks loopback / private IP ranges, applies a timeout, and disables auto-redirect by default.
+- **Rate limiting** — write paths and any expensive operation should call `checkRateLimit` from [`lib/rate-limit.ts`](./lib/rate-limit.ts) with the appropriate preset (`defaultLimiter` or `strictLimiter`). The IP hashing with daily-rotating salt is handled for you.
+- **Cryptography** — if you need a hash or token, use `crypto.subtle` (Web Crypto) or `node:crypto`. Don't import a third-party crypto library or invent a scheme.
+- **SQL** — Drizzle parameterizes by default. If you reach for `sql.raw(...)`, expect the reviewer to ask for a real reason.
+
+### Per-tool checklist
+
+Every new tool PR should be able to answer the questions in the threat model's [per-tool security checklist](./docs/threat-model.md#per-tool-security-checklist). If the honest answer for a row is "concern, but mitigated by X", say so in the PR description.
+
+### Secrets and env
+
+- `.env*` is gitignored except `.env.example`. Real secrets go in your hosting provider's env, never in the repo.
+- The pre-commit gitleaks hook (see [Install gitleaks](#install-gitleaks-recommended) above) catches accidentally committed secrets. CI runs the same scan and **will block** on a leak.
+- New environment variables go in `lib/env.ts` (Zod schema, fail-closed at startup) **and** `.env.example` (with an obviously-fake placeholder).
 
 ## Tests
 

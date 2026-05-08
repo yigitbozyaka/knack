@@ -1,0 +1,66 @@
+# Gitleaks configuration for Knack.
+#
+# We extend the default ruleset (https://github.com/gitleaks/gitleaks) and
+# only add an allowlist for paths that are known to contain placeholder
+# values, documentation about secret names, or generated noise.
+#
+# To run locally:
+#   gitleaks protect --staged --redact --config .gitleaks.toml
+#
+# CI runs `gitleaks detect --redact --config .gitleaks.toml` against the
+# full diff on every PR.
+
+title = "Knack gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Knack-wide allowlist for false positives"
+
+paths = [
+  # Placeholder values for env vars. Treat any "real-looking" secret found
+  # in this file as a real leak — placeholders should be obviously fake.
+  '''(^|/)\.env\.example$''',
+
+  # Lockfiles. Hashes and integrity strings frequently trip generic-secret
+  # detectors. Real credentials should never end up here.
+  '''(^|/)pnpm-lock\.yaml$''',
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)yarn\.lock$''',
+
+  # Security docs reference secret names ("DATABASE_URL", "SESSION_SECRET")
+  # without containing real values.
+  '''(^|/)SECURITY\.md$''',
+  '''(^|/)docs/threat-model\.md$''',
+
+  # Build output and dependency directories.
+  '''(^|/)\.next/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.turbo/''',
+  '''(^|/)\.vercel/''',
+  '''(^|/)coverage/''',
+  '''(^|/)dist/''',
+]
+
+# Common placeholder values that show up in .env.example and docs.
+# These won't suppress a finding on their own (paths above already do),
+# but they help if a placeholder leaks into a different file.
+regexes = [
+  '''your[-_]?(value|secret|token|key|password)[-_]?here''',
+  '''change[-_]?me''',
+  '''replace[-_]?with[-_]?your''',
+  '''xxxxxxxx+''',
+  '''0{8,}''',
+]
+
+# Stop words help the generic-secret rule skip obvious documentation.
+stopwords = [
+  "example",
+  "placeholder",
+  "dummy",
+  "fake",
+  "sample",
+  "lorem",
+  "ipsum",
+]
