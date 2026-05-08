@@ -8,7 +8,9 @@ const serverSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
   DATABASE_URL: z.url(),
-  REDIS_URL: z.url(),
+
+  UPSTASH_REDIS_REST_URL: z.url(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
 
   S3_ENDPOINT: z.url(),
   S3_REGION: z.string().min(1),
@@ -21,6 +23,7 @@ const serverSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
 
   RATE_LIMIT_ENABLED: booleanFromString.default(true),
+  RATE_LIMIT_SALT: z.string().min(32, 'RATE_LIMIT_SALT must be at least 32 characters'),
 })
 
 const clientSchema = z.object({
