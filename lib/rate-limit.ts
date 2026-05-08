@@ -42,6 +42,18 @@ export const strictLimiter: RateLimitConfig = {
   prefix: 'strict',
 }
 
+export const accountCreateLimiter: RateLimitConfig = {
+  requests: 5,
+  window: '1 h',
+  prefix: 'auth:create',
+}
+
+export const signInLimiter: RateLimitConfig = {
+  requests: 10,
+  window: '1 h',
+  prefix: 'auth:signin',
+}
+
 const limiterCache = new Map<string, Ratelimit>()
 
 function buildLimiter(config: RateLimitConfig): Ratelimit {

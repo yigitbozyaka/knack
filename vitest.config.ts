@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: false,
+    setupFiles: ['./vitest.setup.ts'],
     include: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
     exclude: ['**/node_modules/**', '**/.next/**', '**/dist/**'],
     coverage: {
