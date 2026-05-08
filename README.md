@@ -8,7 +8,19 @@ Self-host it, fork it, or contribute new tools. The goal is a community-owned ut
 
 ## Status
 
-🚧 **Phase 2 — Infrastructure.** Database, auth, storage, and the site shell are in place. Individual tools land starting in Phase 3.
+✅ **Phase 3 — Client tools shipped.** Seven browser-only tools are live, with no account required:
+
+| Tool               | URL                  | Notes                                      |
+| ------------------ | -------------------- | ------------------------------------------ |
+| UUID Generator     | `/generate/uuid`     | v4 and v7, RFC-compliant                   |
+| Password Generator | `/generate/password` | Strength meter, rejection sampling         |
+| Secret Generator   | `/generate/secret`   | Hex, Base64, Base64url, alphanumeric       |
+| Formatter          | `/format`            | JSON, YAML, XML — format, minify, validate |
+| Markdown Viewer    | `/markdown`          | DOMPurify-sanitized, syntax highlighting   |
+| Scratchpad         | `/notes`             | localStorage-backed, import/export         |
+| What's my IP?      | `/ip`                | Rate-limited, nothing stored               |
+
+Database, auth, storage infrastructure from Phase 2 is in place for future server-side tools.
 
 ## Architecture
 
@@ -89,6 +101,7 @@ The MinIO console is at [http://localhost:9001](http://localhost:9001) (login: `
 | `pnpm format`       | Format with Prettier         |
 | `pnpm format:check` | Verify formatting in CI      |
 | `pnpm test`         | Run Vitest once              |
+| `pnpm test:e2e`     | Run Playwright E2E tests     |
 | `pnpm db:generate`  | Generate a Drizzle migration |
 | `pnpm db:migrate`   | Run pending migrations       |
 | `pnpm db:seed`      | Seed a demo account (dev)    |

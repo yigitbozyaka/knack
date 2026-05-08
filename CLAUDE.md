@@ -206,6 +206,54 @@ The cron at `/api/cron/expire` (gated by `CRON_SECRET`) sweeps the table, delete
 5. Open a PR targeting `dev`. Fill in the PR template.
 6. Once `dev` is stable, a maintainer opens a PR `dev → master` to ship.
 
+## Tool patterns established in Phase 3
+
+These conventions were locked in during Phase 3 (client-only tools). Apply them to every new tool.
+
+### Client-only tool structure
+
+```
+features/<tool>/
+  lib.ts (or lib/*)   — pure, testable logic (no React, no browser APIs)
+  <Component>.tsx     — 'use client' interactive component
+  __tests__/          — Vitest unit tests co-located with the logic
+
+app/<slug>/
+  page.tsx            — Server Component shell: just metadata + <ToolShell><Component /></ToolShell>
+```
+
+Tools that group by verb use nested slugs: `generate/uuid`, `generate/password`, `generate/secret`.
+
+### Shared UI primitives
+
+- `<ToolShell>` — wraps with `max-w-4xl px-4 py-8`, breadcrumb, and `<ToolErrorBoundary>`.
+- `<ToolPageHeader title description icon>` — consistent heading with optional `actions` slot.
+- `<CopyButton value label size>` — clipboard copy with toast and CheckIcon feedback.
+- `<OutputPanel value language? actions? monospace?>` — scrollable pre with built-in copy.
+
+### Random number generation
+
+Always use `crypto.getRandomValues`. Never `Math.random`. Use rejection sampling when selecting from a charset (draw until the value fits without bias).
+
+### State without effects
+
+Avoid `useEffect` for derived or computed state. Compute inline or in event handlers. The `react-hooks/set-state-in-effect` ESLint rule enforces this.
+
+### localStorage tools
+
+Pattern: `features/<tool>/lib/storage.ts` (pure CRUD with Zod import validation) + `features/<tool>/lib/use-<tool>.ts` (React hook with optimistic state + debounced persist). Tests stub `localStorage` via `vi.stubGlobal('localStorage', mock)` and check `typeof localStorage !== 'undefined'` (not `typeof window`) to ensure the stub is visible.
+
+### data-testid for E2E hooks
+
+Primary output elements get a `data-testid` so Playwright tests can find them reliably:
+`uuid-output`, `password-output`, `secret-output`, `format-output`.
+
+### TypeScript quirks
+
+- **ES2017 target** — no BigInt literals (`10n`). Use integer arithmetic for 64-bit timestamp fields.
+- **`noImplicitOverride`** — class methods that override a parent must use the `override` keyword (applies to class components like `ToolErrorBoundary`).
+- **`catch (err)`** — type is `unknown`. Narrow with `instanceof Error` or a type assertion with a guard before reading properties.
+
 ## Adding a new tool — checklist
 
 When you're asked to add a new utility tool to Knack, follow this:

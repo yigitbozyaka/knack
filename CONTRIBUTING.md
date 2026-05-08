@@ -141,8 +141,14 @@ Every new tool PR should be able to answer the questions in the threat model's [
 
 Add tests for any logic that isn't trivially correct from reading. Pure utility functions go in `lib/tools/<slug>/` with a co-located `__tests__/` folder.
 
-- **Unit tests:** Vitest. Cover happy path, at least one edge case, one invalid input.
-- **E2E tests:** Playwright (added in a later phase). Reach for these only when behavior crosses several components.
+- **Unit tests:** Vitest. Cover happy path, at least one edge case, one invalid input. Run with `pnpm test`.
+- **E2E tests:** Playwright, in `tests/e2e/`. Reach for these when behavior crosses several components or requires a real browser. Run with `pnpm test:e2e` (requires a running dev or prod server — the config auto-starts `pnpm dev` locally if none is found).
+
+  To install Playwright browsers the first time:
+
+  ```bash
+  pnpm exec playwright install chromium --with-deps
+  ```
 
 A PR that adds tools without tests will be asked to add them. A PR that adds a bug fix without a regression test will be asked too.
 
