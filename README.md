@@ -8,7 +8,17 @@ Self-host it, fork it, or contribute new tools. The goal is a community-owned ut
 
 ## Status
 
-🚧 **Phase 1 — Bootstrap.** The repo is being scaffolded. Tools land starting in Phase 3.
+🚧 **Phase 2 — Infrastructure.** Database, auth, storage, and the site shell are in place. Individual tools land starting in Phase 3.
+
+## Architecture
+
+A few load-bearing decisions worth knowing before you contribute:
+
+- **Token-only accounts.** No email, no password, no recovery. We give you a 20-digit token, store an Argon2id hash plus a deterministic HMAC lookup hash, and you sign in by pasting the token back. Lose it, account's gone.
+- **Presigned uploads.** Files never proxy through Next — the client gets a presigned PUT URL, uploads directly to R2/MinIO, and the server only stores metadata.
+- **Expirable resources.** Anything that should auto-delete (pastes, notes, uploads, short links) writes a row to `expirable_objects` with an `expires_at`. A scheduled cron (`/api/cron/expire`) sweeps the table and deletes the storage object + resource.
+- **Rate limiting at every mutation.** Identifiers are SHA-256 hashed with a daily-rotating salt before being written to Redis, so the rate-limit store is never a tracking ledger.
+- **Hashed-IP everywhere we touch IPs.** Abuse reports, rate-limit keys — never raw IPs.
 
 ## Features
 
@@ -50,10 +60,15 @@ docker compose up -d
 
 # 3. Configure environment
 cp .env.example .env.local
-# then edit .env.local — at minimum, set SESSION_SECRET to 32+ random chars
+# then edit .env.local — at minimum, set SESSION_SECRET, RATE_LIMIT_SALT, and
+# CRON_SECRET to 32+ random chars each.
 #   node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
 
-# 4. Run the dev server
+# 4. Migrate the database and seed a demo account
+pnpm db:migrate
+pnpm db:seed   # prints a one-shot demo token to stdout — save it
+
+# 5. Run the dev server
 pnpm dev
 ```
 
@@ -73,6 +88,11 @@ The MinIO console is at [http://localhost:9001](http://localhost:9001) (login: `
 | `pnpm typecheck`    | Run `tsc --noEmit`           |
 | `pnpm format`       | Format with Prettier         |
 | `pnpm format:check` | Verify formatting in CI      |
+| `pnpm test`         | Run Vitest once              |
+| `pnpm db:generate`  | Generate a Drizzle migration |
+| `pnpm db:migrate`   | Run pending migrations       |
+| `pnpm db:seed`      | Seed a demo account (dev)    |
+| `pnpm db:studio`    | Open Drizzle Studio          |
 
 ## Contributing
 

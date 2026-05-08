@@ -97,11 +97,15 @@ lib/
   email/                Outbound email helpers (currently stub)
   redis/                Upstash REST client wrapper
   security/             sanitize.ts (escape helpers), ssrf.ts (safeFetch)
-  db/                   Drizzle client and schema (added in Phase 2)
-  storage/              R2/S3 client wrapper (added in Phase 2)
+  db/                   Drizzle client (lib/db/client.ts), schemas (lib/db/schema/*), migrations (lib/db/migrations/*)
+  storage/              S3 client + presigned URL helpers + magic-byte mime sniffing
+  auth/                 Token generation/hashing, iron-session cookie, requireAccount()
+  tools/registry.ts     Typed registry of all tools, surfaced on the homepage
+  errors.ts             Typed AppError subclasses (Unauthorized, RateLimit, Validation, …)
 hooks/                  Reusable React hooks
 public/                 Static assets
 proxy.ts                Edge proxy (security headers, CSP nonce)
+scripts/                tsx scripts: migrate.ts, seed.ts
 docker-compose.yml      Local Postgres + Redis + Serverless Redis HTTP + MinIO
 ```
 
@@ -120,6 +124,11 @@ docker-compose.yml      Local Postgres + Redis + Serverless Redis HTTP + MinIO
 | `pnpm test:coverage`   | Vitest with v8 coverage reporter          |
 | `pnpm format`          | Format with Prettier                      |
 | `pnpm format:check`    | Format check (used by CI)                 |
+| `pnpm db:generate`     | Generate a Drizzle migration from schema  |
+| `pnpm db:migrate`      | Run pending migrations                    |
+| `pnpm db:seed`         | Seed a demo account (dev only)            |
+| `pnpm db:studio`       | Open Drizzle Studio                       |
+| `pnpm db:push`         | Push schema directly (dev experiments)    |
 | `docker compose up -d` | Boot Postgres, Redis, SRH proxy, MinIO    |
 | `docker compose down`  | Stop them                                 |
 
@@ -140,6 +149,53 @@ These apply to every change. The full picture is in [`docs/threat-model.md`](./d
 - **Tools that render parsed user input** (markdown, HTML, JSON) must follow the per-tool checklist in [`docs/threat-model.md#per-tool-security-checklist`](./docs/threat-model.md#per-tool-security-checklist) before merging.
 
 If you need to discuss a real vulnerability, follow [`SECURITY.md`](./SECURITY.md). Don't open public issues.
+
+## Database
+
+Drizzle ORM on Postgres. Schemas live in `lib/db/schema/<table>.ts` and are re-exported from `lib/db/schema/index.ts`. The Drizzle client (`db`) is in `lib/db/client.ts` — pool size is `1` in dev (HMR-safe via `globalThis`) and `10` in prod.
+
+- **Adding a schema**: create `lib/db/schema/<table>.ts`, define the table, re-export from `index.ts`, run `pnpm db:generate` to produce a migration SQL file, and commit both the schema and the generated migration in the same PR.
+- **Never edit a migration after it's merged.** Generate a follow-up migration instead. Migrations are forward-only; rewriting history breaks anyone who's already migrated.
+- **Use `check()` constraints** for enum-like columns instead of Postgres `enum` types — easier to extend without ALTER TYPE pain.
+- **Indexes**: add them at schema time. Anything you'll query by, anything used in a `WHERE` or `JOIN`, gets an index.
+
+## Storage
+
+S3-compatible: Cloudflare R2 in prod, MinIO in dev. Always use `lib/storage/upload.ts`:
+
+- **Client uploads** → `getUploadUrl({ key, contentType, contentLength })` returns a presigned PUT URL with content-type and content-length pinned. The browser uploads directly to R2/MinIO. **Never proxy file bytes through a Next route or Server Action** — it kills request budgets and removes the size cap that the presigned URL enforces.
+- **Downloads** → `getDownloadUrl({ key, filename })` returns a presigned GET URL. Pass `filename` to force `content-disposition: attachment` for non-images.
+- **Object keys** → `generateObjectKey({ prefix })` produces `prefix/yyyy/mm/dd/<nanoid24>`. Keys must NEVER include account IDs, user IDs, or any identifier that could be enumerated.
+- **MIME validation** → `validateUpload({ buffer, declaredType, mode })` from `lib/storage/mime.ts` sniffs magic bytes and rejects mismatches, executables, scripts, HTML, and SVG. Use `mode: 'image'` for image-only paths.
+
+## Auth
+
+Mullvad-style tokens. No email, no password, no recovery. The flow is:
+
+1. `createAccountAction` generates a 20-digit token (~66 bits entropy), stores `argon2id(token)` and `hmac_sha256(token, SESSION_SECRET)` (the deterministic "lookup hash"), and shows the raw token to the user once.
+2. `signInAction` normalizes the input, computes the lookup hash, finds the row by it, and verifies the Argon2 hash in constant time. Failures always return a generic "Invalid token." with a 1s artificial delay.
+3. The session is a 90-day sliding `iron-session` cookie (`httpOnly`, `sameSite=lax`, `secure` in prod).
+
+How to use it in code:
+
+- **Gate a Server Action**: `import { requireAccount } from '@/lib/auth/account'`, then `const account = await requireAccount()` at the top. It throws `UnauthorizedError` (from `lib/errors.ts`) when there's no session.
+- **Optional sign-in**: `getCurrentAccount()` returns `{ id, createdAt } | null`. It's `cache()`-wrapped, so calling it more than once per request is free.
+- **Anonymous use**: tools that work for both signed-in and anonymous users should add a nullable `account_id uuid references accounts(id) on delete set null` column to their resource table. When `account_id` is null, the resource is anonymous and bound only to its expiry.
+
+## Expirable resources
+
+Anything that should auto-delete (paste, note, upload, short link) MUST insert a row into `expirable_objects` at create time:
+
+```ts
+await db.insert(expirableObjects).values({
+  kind: 'paste', // 'paste' | 'note' | 'upload' | 'short'
+  resourceId: paste.id,
+  storageKey: null, // set this for file uploads so the cron deletes the S3 object too
+  expiresAt: new Date(Date.now() + ttlMs),
+})
+```
+
+The cron at `/api/cron/expire` (gated by `CRON_SECRET`) sweeps the table, deletes the S3 object if `storage_key` is set, then deletes the `expirable_objects` row. Resource-row deletion (the actual `pastes` / `notes` / `uploads` row) is wired in each tool's PR; do that as part of your tool's expire path.
 
 ## Workflow for any non-trivial change
 
@@ -162,13 +218,14 @@ When you're asked to add a new utility tool to Knack, follow this:
 6. **Validate input with Zod.** Define schemas for any text input, file upload, or option set. Reject early; surface friendly errors.
 7. **UI from shadcn primitives.** `Card`, `Button`, `Input`, `Textarea`, `Tabs`, `Toggle`, etc. Match the visual rhythm of existing tools.
 8. **Tests.** A Vitest unit-test file next to the lib code (`lib/tools/<slug>/__tests__/<thing>.test.ts`) covering happy path + at least one edge case + one invalid input.
-9. **Register the tool.** Add it to the tool registry (Phase 3 — TBD; the registry will live in `lib/tools/registry.ts`). At minimum: title, description, slug, category, icon.
-10. **Metadata.** Page-level `<metadata>` export with title, description, OG image (auto-generated by the OG route in Phase 3).
-11. **Accessibility.** Labels for every input, focus order makes sense, errors announced to screen readers, keyboard usable end-to-end.
-12. **Security pass.** Walk the per-tool checklist in [`docs/threat-model.md`](./docs/threat-model.md#per-tool-security-checklist): validated inputs, sanitized output, `safeFetch` for outbound, file bounds, rate limit, no leaking logs, friendly failure mode.
-13. **Manual smoke test.** Run `pnpm dev`, exercise the tool with valid + invalid input, confirm dark/light mode both look good.
-14. **Lint, typecheck, test, build.** All clean before pushing.
-15. **PR.** Target `dev`. Use the template. Include a screenshot or short clip of the tool in action.
+9. **Register the tool.** Add it to `lib/tools/registry.ts` with `{ slug, name, description, icon, status, category }`. Default to `status: 'soon'` until the tool is shippable; flip to `'live'` in the same PR that lands the working route.
+10. **Wire expiry if it's persistent.** If your tool stores anything with a TTL (paste, note, upload, short link), insert into `expirable_objects` at create time — see the **Expirable resources** section above.
+11. **Metadata.** Page-level `<metadata>` export with title, description, OG image (auto-generated by the OG route in Phase 3).
+12. **Accessibility.** Labels for every input, focus order makes sense, errors announced to screen readers, keyboard usable end-to-end.
+13. **Security pass.** Walk the per-tool checklist in [`docs/threat-model.md`](./docs/threat-model.md#per-tool-security-checklist): validated inputs, sanitized output, `safeFetch` for outbound, file bounds, rate limit, no leaking logs, friendly failure mode.
+14. **Manual smoke test.** Run `pnpm dev`, exercise the tool with valid + invalid input, confirm dark/light mode both look good.
+15. **Lint, typecheck, test, build.** All clean before pushing.
+16. **PR.** Target `dev`. Use the template. Include a screenshot or short clip of the tool in action.
 
 ## Things to avoid
 
