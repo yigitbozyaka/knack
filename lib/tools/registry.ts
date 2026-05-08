@@ -73,11 +73,11 @@ export const TOOLS: readonly Tool[] = [
     category: 'Generators',
   },
   {
-    slug: 'password',
+    slug: 'generate/password',
     name: 'Password generator',
     description: 'Strong random passwords with adjustable length and character set.',
     icon: 'key-round',
-    status: 'soon',
+    status: 'live',
     category: 'Generators',
   },
   {
