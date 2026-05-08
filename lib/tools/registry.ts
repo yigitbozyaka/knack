@@ -6,6 +6,7 @@ export type ToolStatus = 'live' | 'soon'
 export const TOOL_ICONS = [
   'braces',
   'fingerprint',
+  'globe',
   'hash',
   'list-ordered',
   'qr-code',
@@ -120,6 +121,14 @@ export const TOOLS: readonly Tool[] = [
     icon: 'image',
     status: 'soon',
     category: 'Storage',
+  },
+  {
+    slug: 'ip',
+    name: "What's my IP?",
+    description: 'See your public IP address. Nothing is logged or stored.',
+    icon: 'globe',
+    status: 'live',
+    category: 'Network',
   },
   {
     slug: 'short',
