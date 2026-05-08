@@ -1,6 +1,7 @@
 import {
   BracesIcon,
   FileTextIcon,
+  FingerprintIcon,
   HashIcon,
   ImageIcon,
   KeyRoundIcon,
@@ -16,6 +17,7 @@ import { type ToolIcon } from '@/lib/tools/registry'
 
 const ICONS: Record<ToolIcon, LucideIcon> = {
   braces: BracesIcon,
+  fingerprint: FingerprintIcon,
   hash: HashIcon,
   'list-ordered': ListOrderedIcon,
   'qr-code': QrCodeIcon,

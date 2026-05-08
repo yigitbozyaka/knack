@@ -5,6 +5,7 @@ export type ToolStatus = 'live' | 'soon'
 
 export const TOOL_ICONS = [
   'braces',
+  'fingerprint',
   'hash',
   'list-ordered',
   'qr-code',
@@ -31,6 +32,14 @@ export interface Tool {
 }
 
 export const TOOLS: readonly Tool[] = [
+  {
+    slug: 'generate/uuid',
+    name: 'UUID generator',
+    description: 'Generate RFC-compliant UUID v4 and v7 identifiers in your browser.',
+    icon: 'fingerprint',
+    status: 'live',
+    category: 'Generators',
+  },
   {
     slug: 'json',
     name: 'JSON formatter',
