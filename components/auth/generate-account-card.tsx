@@ -7,13 +7,12 @@ import { useRouter } from 'next/navigation'
 import { CheckIcon, CopyIcon, KeyRoundIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { createAccountAction } from '@/app/actions/auth'
+import { createAccountAction, signInAction } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -24,10 +23,12 @@ import { Label } from '@/components/ui/label'
 
 export function GenerateAccountCard() {
   const [pending, startTransition] = useTransition()
+  const [continuing, startContinue] = useTransition()
   const [token, setToken] = useState<string | null>(null)
   const [acknowledged, setAcknowledged] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [continueError, setContinueError] = useState<string | null>(null)
   const router = useRouter()
 
   function handleGenerate() {
@@ -60,9 +61,26 @@ export function GenerateAccountCard() {
   }
 
   function handleContinue() {
-    setToken(null)
-    router.push('/')
-    router.refresh()
+    if (!token) return
+    setContinueError(null)
+    const tokenToUse = token
+    startContinue(async () => {
+      const result = await signInAction(tokenToUse)
+      if (result.status === 'success') {
+        setToken(null)
+        router.push('/')
+        router.refresh()
+        return
+      }
+      // Account was created but signing in failed (rate limit, transient DB
+      // hiccup). The token is still valid — the user has it saved and can
+      // paste it into the sign-in form on the same page.
+      setContinueError(
+        result.status === 'rate-limited'
+          ? 'Too many sign-in attempts right now. Use Sign in with the token you just saved.'
+          : 'Could not sign you in automatically. Use Sign in with the token you just saved.',
+      )
+    })
   }
 
   return (
@@ -88,10 +106,21 @@ export function GenerateAccountCard() {
       <Dialog
         open={token !== null}
         onOpenChange={(open) => {
-          if (!open && acknowledged) handleContinue()
+          // Block dismissing the dialog by clicking outside or pressing Escape
+          // — the token is shown only here, once. The Continue button is the
+          // only way out, and only after the user has acknowledged saving it.
+          if (!open) return
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent
+          className="max-w-md"
+          onPointerDownOutside={(event) => {
+            event.preventDefault()
+          }}
+          onEscapeKeyDown={(event) => {
+            event.preventDefault()
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Save your account token</DialogTitle>
             <DialogDescription>
@@ -125,12 +154,15 @@ export function GenerateAccountCard() {
               I have saved this token. I understand it cannot be recovered.
             </span>
           </Label>
+          {continueError ? (
+            <p className="text-destructive text-sm" role="alert">
+              {continueError}
+            </p>
+          ) : null}
           <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" disabled={!acknowledged} onClick={handleContinue}>
-                Continue
-              </Button>
-            </DialogClose>
+            <Button type="button" disabled={!acknowledged || continuing} onClick={handleContinue}>
+              {continuing ? 'Signing in…' : 'Continue'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

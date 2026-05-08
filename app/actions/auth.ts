@@ -62,7 +62,12 @@ export async function createAccountAction(): Promise<CreateAccountState> {
     return { status: 'error', message: 'Could not create account. Please try again.' }
   }
 
-  await setSession(account.id)
+  // Intentionally not calling setSession here. Writing the session cookie
+  // inside this action would make Next revalidate the current route's RSC,
+  // which flips app/account/page.tsx into its signed-in branch and unmounts
+  // GenerateAccountCard before the "save your token" dialog can open. The
+  // client calls signInAction(token) from the dialog's Continue button once
+  // the user has acknowledged saving the token.
   return { status: 'success', token }
 }
 
