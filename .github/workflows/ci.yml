@@ -134,4 +134,16 @@ jobs:
       - name: Build
         env:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+          UPSTASH_REDIS_REST_URL: http://localhost:8079
+          UPSTASH_REDIS_REST_TOKEN: ci-build-token
+          S3_ENDPOINT: http://localhost:9000
+          S3_REGION: auto
+          S3_ACCESS_KEY_ID: ci-access-key
+          S3_SECRET_ACCESS_KEY: ci-secret-key
+          S3_BUCKET: ci
+          S3_PUBLIC_URL: http://localhost:9000/ci
+          SESSION_SECRET: ci-build-session-secret-not-used-at-runtime-xx
+          RATE_LIMIT_SALT: ci-build-rate-limit-salt-not-used-at-runtime-x
+          CRON_SECRET: ci-build-cron-secret-not-used-at-runtime-xxxxxx
         run: pnpm build
