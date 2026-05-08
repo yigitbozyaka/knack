@@ -1,10 +1,10 @@
 import { Geist, Geist_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 
-import { AccountIndicator } from '@/components/auth/account-indicator'
-import { Footer } from '@/components/footer'
+import { SiteFooter } from '@/components/layout/site-footer'
+import { SiteHeader } from '@/components/layout/site-header'
 import { ThemeProvider } from '@/components/theme-provider'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { env } from '@/lib/env'
 
 import './globals.css'
 
@@ -20,9 +20,34 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
+const APP_NAME = 'Knack'
+const APP_DESCRIPTION =
+  'An open-source utility belt for the web — converters, encoders, generators, paste, short links, and more.'
+
 export const metadata: Metadata = {
-  title: 'Knack',
-  description: 'An all-in-one web utilities app.',
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
+  title: {
+    default: APP_NAME,
+    template: `%s · ${APP_NAME}`,
+  },
+  description: APP_DESCRIPTION,
+  applicationName: APP_NAME,
+  // TODO(phase-3): generate /og.png via the OG image route. Until then this
+  // file does not exist; preview cards will fall back to no image.
+  openGraph: {
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    url: env.NEXT_PUBLIC_APP_URL,
+    siteName: APP_NAME,
+    type: 'website',
+    images: ['/og.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    images: ['/og.png'],
+  },
 }
 
 export default async function RootLayout({
@@ -46,15 +71,9 @@ export default async function RootLayout({
           disableTransitionOnChange
           nonce={nonce}
         >
-          <header className="flex items-center justify-between border-b px-4 py-3">
-            <span className="font-semibold">Knack</span>
-            <div className="flex items-center gap-3">
-              <AccountIndicator />
-              <ThemeToggle />
-            </div>
-          </header>
+          <SiteHeader />
           <main className="flex-1">{children}</main>
-          <Footer />
+          <SiteFooter />
         </ThemeProvider>
       </body>
     </html>
