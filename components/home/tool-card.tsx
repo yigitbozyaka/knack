@@ -2,11 +2,11 @@ import Link from 'next/link'
 
 import { ArrowUpRightIcon } from 'lucide-react'
 
+import { ToolIconView } from '@/components/home/tool-icon'
 import { type Tool } from '@/lib/tools/registry'
 import { cn } from '@/lib/utils'
 
 export function ToolCard({ tool }: { tool: Tool }) {
-  const Icon = tool.icon
   const isLive = tool.status === 'live'
 
   const className = cn(
@@ -17,7 +17,7 @@ export function ToolCard({ tool }: { tool: Tool }) {
   const inner = (
     <>
       <div className="flex items-center justify-between">
-        <Icon className="text-muted-foreground size-5" aria-hidden />
+        <ToolIconView name={tool.icon} className="text-muted-foreground size-5" />
         {isLive ? (
           <ArrowUpRightIcon className="text-muted-foreground/60 group-hover:text-foreground size-4 transition-colors" />
         ) : (
