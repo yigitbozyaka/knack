@@ -1,17 +1,15 @@
-import { type YAMLException, dump, load } from 'js-yaml'
+import { YAMLException, dump, load } from 'js-yaml'
 
 import { type FormatResult } from './types'
 
 function yamlError(err: unknown): FormatResult {
-  // js-yaml throws YAMLException with .reason and .mark (line/column)
-  const e = err as YAMLException
-  if (typeof e.reason === 'string') {
+  if (err instanceof YAMLException) {
     return {
       ok: false,
       error: {
-        message: e.reason,
-        line: e.mark.line + 1,
-        col: e.mark.column + 1,
+        message: err.reason,
+        line: err.mark.line + 1,
+        col: err.mark.column + 1,
       },
     }
   }

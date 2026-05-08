@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 
 import { ArrowLeftRightIcon, BracesIcon } from 'lucide-react'
 
@@ -83,7 +83,7 @@ export function Formatter() {
     }, 0)
   }
 
-  const resolved = resolveFormat(formatType, input)
+  const resolved = useMemo(() => resolveFormat(formatType, input), [formatType, input])
   const canMinify = resolved === 'json'
 
   return (

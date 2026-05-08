@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { SearchIcon } from 'lucide-react'
 
@@ -14,7 +14,7 @@ type TabValue = typeof ALL | ToolCategory
 
 function useDebounce(value: string, ms: number): string {
   const [debounced, setDebounced] = useState(value)
-  useMemo(() => {
+  useEffect(() => {
     const id = setTimeout(() => {
       setDebounced(value)
     }, ms)

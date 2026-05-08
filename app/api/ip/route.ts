@@ -7,7 +7,10 @@ export const dynamic = 'force-dynamic'
 
 function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown'
+  if (forwarded) {
+    const parts = forwarded.split(',')
+    return parts[parts.length - 1]?.trim() ?? 'unknown'
+  }
   return request.headers.get('x-real-ip') ?? 'unknown'
 }
 

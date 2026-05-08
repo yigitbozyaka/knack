@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import hljs from 'highlight.js'
 import { FileTextIcon } from 'lucide-react'
@@ -36,7 +36,7 @@ export function MarkdownViewer() {
   const [markdown, setMarkdown] = useState(SAMPLE)
   const previewRef = useRef<HTMLDivElement>(null)
 
-  const html = renderMarkdown(markdown)
+  const html = useMemo(() => renderMarkdown(markdown), [markdown])
 
   useEffect(() => {
     if (!previewRef.current) return

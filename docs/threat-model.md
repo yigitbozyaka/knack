@@ -133,6 +133,20 @@ Every new tool PR (the "Add a new tool" flow in `CLAUDE.md`) must be able to ans
 
 If a tool can't answer "no concern" or "covered by existing control" for any of these, the PR description must say what's mitigating it.
 
+### Markdown Viewer
+
+| Question         | Answer                                                                                                                                                                                                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inputs           | Single `string` — the raw markdown text. No file upload, no URL. Not validated with Zod (no structured schema needed; any string is accepted and sanitized).                                                                                                            |
+| Output rendering | Yes — output is set via `dangerouslySetInnerHTML`. Sanitized with DOMPurify before use. `FORBID_TAGS` blocks `<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<input>`, `<button>`. `FORBID_ATTR` blocks event handlers and `style`. `ALLOW_DATA_ATTR: false`. |
+| `data:` URLs     | `data:` is in `ALLOWED_URI_REGEXP` to support inline images in markdown. The `afterSanitizeAttributes` hook rewrites `data:` (and `javascript:`) hrefs on `<a>` to `#`, preventing link-navigation to data:text/html XSS payloads. Images are unaffected.               |
+| Outbound calls   | None. Runs entirely in the browser.                                                                                                                                                                                                                                     |
+| File handling    | None.                                                                                                                                                                                                                                                                   |
+| Persistence      | None. No DB, Redis, or R2 writes.                                                                                                                                                                                                                                       |
+| Rate limiting    | No server-side route — client-only tool. N/A.                                                                                                                                                                                                                           |
+| Logs             | Nothing logged.                                                                                                                                                                                                                                                         |
+| Failure mode     | Marked and DOMPurify never throw user-visible errors; malformed input is silently rendered as-is or stripped.                                                                                                                                                           |
+
 ---
 
 ## Process

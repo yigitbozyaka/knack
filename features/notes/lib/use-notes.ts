@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { type Note, deleteNote, exportAll, importAll, listNotes, saveNote } from './storage'
 
@@ -11,7 +11,17 @@ export function useNotes() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [draft, setDraft] = useState<Note | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = useRef<Note | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        if (pendingSaveRef.current) saveNote(pendingSaveRef.current)
+      }
+    }
+  }, [])
 
   const refresh = useCallback(() => {
     setNotes(listNotes())
@@ -48,6 +58,7 @@ export function useNotes() {
       if (!base) return
       const updated: Note = { ...base, ...changes, updatedAt: new Date().toISOString() }
       setDraft(updated)
+      pendingSaveRef.current = updated
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => {
         try {
@@ -56,6 +67,7 @@ export function useNotes() {
         } catch (err) {
           setStorageError(err instanceof Error ? err.message : 'Auto-save failed.')
         }
+        pendingSaveRef.current = null
         refresh()
         setDraft(null)
       }, 500)
