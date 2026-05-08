@@ -13,6 +13,7 @@ const defaults: Record<string, string> = {
   SESSION_SECRET: 'test-session-secret-at-least-32-chars-long',
   RATE_LIMIT_ENABLED: 'false',
   RATE_LIMIT_SALT: 'test-rate-limit-salt-at-least-32-chars-long',
+  CRON_SECRET: 'test-cron-secret-at-least-32-chars-long-x',
 }
 
 for (const [key, value] of Object.entries(defaults)) {

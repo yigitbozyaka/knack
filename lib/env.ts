@@ -24,6 +24,8 @@ const serverSchema = z.object({
 
   RATE_LIMIT_ENABLED: booleanFromString.default(true),
   RATE_LIMIT_SALT: z.string().min(32, 'RATE_LIMIT_SALT must be at least 32 characters'),
+
+  CRON_SECRET: z.string().min(32, 'CRON_SECRET must be at least 32 characters'),
 })
 
 const clientSchema = z.object({
