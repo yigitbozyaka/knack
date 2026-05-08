@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 
+import { AccountIndicator } from '@/components/auth/account-indicator'
 import { Footer } from '@/components/footer'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -47,7 +48,10 @@ export default async function RootLayout({
         >
           <header className="flex items-center justify-between border-b px-4 py-3">
             <span className="font-semibold">Knack</span>
-            <ThemeToggle />
+            <div className="flex items-center gap-3">
+              <AccountIndicator />
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1">{children}</main>
           <Footer />

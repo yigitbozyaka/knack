@@ -13,13 +13,11 @@ import { accounts } from '@/lib/db/schema'
 import { accountCreateLimiter, checkRateLimit, signInLimiter } from '@/lib/rate-limit'
 
 export type CreateAccountState =
-  | { status: 'idle' }
   | { status: 'success'; token: string }
   | { status: 'rate-limited' }
   | { status: 'error'; message: string }
 
 export type SignInState =
-  | { status: 'idle' }
   | { status: 'success' }
   | { status: 'rate-limited' }
   | { status: 'error'; message: string }
