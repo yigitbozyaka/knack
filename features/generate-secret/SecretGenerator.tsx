@@ -84,7 +84,12 @@ export function SecretGenerator() {
 
       {/* Output */}
       <div className="bg-muted/30 border-border mb-8 flex items-start gap-3 rounded-lg border px-4 py-3">
-        <span className="flex-1 font-mono text-sm leading-relaxed break-all">{secret}</span>
+        <span
+          data-testid="secret-output"
+          className="flex-1 font-mono text-sm leading-relaxed break-all"
+        >
+          {secret}
+        </span>
         <div className="flex shrink-0 gap-1">
           <CopyButton value={secret} size="icon-sm" label="Copy secret" />
           <Button variant="ghost" size="icon-sm" onClick={regenerate} aria-label="Regenerate">

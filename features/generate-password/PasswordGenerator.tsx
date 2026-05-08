@@ -81,7 +81,7 @@ export function PasswordGenerator() {
 
       {/* Output */}
       <div className="bg-muted/30 border-border mb-2 flex items-center gap-3 rounded-lg border px-4 py-3">
-        <span className="flex-1 font-mono text-sm break-all">
+        <span data-testid="password-output" className="flex-1 font-mono text-sm break-all">
           {error ? <span className="text-destructive">{error}</span> : password}
         </span>
         {password && <CopyButton value={password} size="icon-sm" label="Copy password" />}

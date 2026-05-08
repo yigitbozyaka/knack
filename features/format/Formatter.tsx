@@ -159,6 +159,7 @@ export function Formatter() {
             {output && <CopyButton value={output} size="xs" label="Copy" />}
           </div>
           <pre
+            data-testid="format-output"
             className="border-border bg-muted/30 h-80 overflow-auto rounded-lg border p-3 font-mono text-sm whitespace-pre-wrap"
             aria-label="Output"
           >

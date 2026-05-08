@@ -55,7 +55,9 @@ export function UuidGenerator() {
       </div>
 
       <div className="bg-muted/30 border-border mb-4 flex items-center gap-3 rounded-lg border px-4 py-3">
-        <span className="flex-1 font-mono text-sm break-all">{single}</span>
+        <span data-testid="uuid-output" className="flex-1 font-mono text-sm break-all">
+          {single}
+        </span>
         <CopyButton value={single} size="icon-sm" label="Copy UUID" />
       </div>
 
