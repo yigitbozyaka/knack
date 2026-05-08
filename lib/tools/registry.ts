@@ -10,6 +10,7 @@ export const TOOL_ICONS = [
   'list-ordered',
   'qr-code',
   'key-round',
+  'shield',
   'file-text',
   'upload',
   'image',
@@ -32,6 +33,14 @@ export interface Tool {
 }
 
 export const TOOLS: readonly Tool[] = [
+  {
+    slug: 'generate/secret',
+    name: 'Secret generator',
+    description: 'Generate cryptographic random strings for API keys, JWT secrets, and tokens.',
+    icon: 'shield',
+    status: 'live',
+    category: 'Generators',
+  },
   {
     slug: 'generate/uuid',
     name: 'UUID generator',
