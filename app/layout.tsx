@@ -1,4 +1,4 @@
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 
 import { SiteFooter } from '@/components/layout/site-footer'
@@ -10,14 +10,14 @@ import './globals.css'
 
 import type { Metadata } from 'next'
 
-const inter = Inter({
-  variable: '--font-inter',
+const geistSans = Geist({
+  variable: '--font-geist-sans',
   subsets: ['latin'],
   display: 'swap',
 })
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: '--font-jetbrains-mono',
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
   subsets: ['latin'],
   display: 'swap',
 })
@@ -63,7 +63,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider
