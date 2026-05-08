@@ -165,6 +165,7 @@ jobs:
           S3_PUBLIC_URL: http://localhost:9000/ci
           SESSION_SECRET: ci-build-session-secret-not-used-at-runtime-xx
           RATE_LIMIT_SALT: ci-build-rate-limit-salt-not-used-at-runtime-x
+          RATE_LIMIT_ENABLED: 'false'
           CRON_SECRET: ci-build-cron-secret-not-used-at-runtime-xxxxxx
         run: |
           pnpm start &

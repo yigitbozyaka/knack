@@ -52,7 +52,7 @@ test.describe('Secret generator', () => {
 test.describe('Formatter', () => {
   test('pretty-prints JSON', async ({ page }) => {
     await page.goto('/format')
-    const textarea = page.getByLabel('Input')
+    const textarea = page.getByLabel('Input', { exact: true })
     await textarea.fill('{"a":1}')
     await page.getByRole('button', { name: /format/i }).click()
     const output = await page.locator('[data-testid="format-output"]').textContent()
