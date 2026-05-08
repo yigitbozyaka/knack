@@ -23,6 +23,11 @@ paths = [
   # in this file as a real leak — placeholders should be obviously fake.
   '''(^|/)\.env\.example$''',
 
+  # Test setup file. Seeds process.env with deterministic placeholder
+  # values so Vitest can run without a real .env. Same rule as
+  # .env.example: real secrets must not be added here.
+  '''(^|/)vitest\.setup\.ts$''',
+
   # Lockfiles. Hashes and integrity strings frequently trip generic-secret
   # detectors. Real credentials should never end up here.
   '''(^|/)pnpm-lock\.yaml$''',
