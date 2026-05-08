@@ -50,11 +50,11 @@ export const TOOLS: readonly Tool[] = [
     category: 'Generators',
   },
   {
-    slug: 'json',
-    name: 'JSON formatter',
-    description: 'Pretty-print, minify, and validate JSON. No size cap.',
+    slug: 'format',
+    name: 'Formatter',
+    description: 'Pretty-print, minify, and validate JSON, XML, and YAML.',
     icon: 'braces',
-    status: 'soon',
+    status: 'live',
     category: 'Text & Code',
   },
   {
