@@ -75,7 +75,7 @@ Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `style`, `perf`, `ci`
 Examples:
 
 - `feat(tools/json): add minify mode`
-- `fix(env): handle empty REDIS_URL gracefully`
+- `fix(env): reject empty SESSION_SECRET with a clear error`
 - `chore(deps): bump next to 16.3.0`
 - `docs(readme): clarify quickstart`
 
@@ -84,20 +84,25 @@ Examples:
 ```
 app/                    Next.js App Router routes, layouts, pages
   (tools)/              Route group for utility tools (one folder per tool)
+  actions/              Server Actions (e.g. report-abuse)
   api/                  Route handlers (only when an HTTP API is genuinely needed)
-  layout.tsx            Root layout (theme provider, header, fonts)
+  layout.tsx            Root layout (theme provider, header, footer, fonts)
 components/
   ui/                   shadcn primitives — do not edit directly, regenerate via shadcn CLI
   <feature>/            Feature-specific components (when reused across pages)
 lib/
   env.ts                Zod-validated env loader — only place that reads process.env
   utils.ts              cn() helper and other tiny utilities
+  rate-limit.ts         Sliding-window limiter on Upstash, hashed-IP keying
+  email/                Outbound email helpers (currently stub)
+  redis/                Upstash REST client wrapper
+  security/             sanitize.ts (escape helpers), ssrf.ts (safeFetch)
   db/                   Drizzle client and schema (added in Phase 2)
-  redis/                Upstash client wrapper (added in Phase 2)
   storage/              R2/S3 client wrapper (added in Phase 2)
 hooks/                  Reusable React hooks
 public/                 Static assets
-docker-compose.yml      Local Postgres + Redis + MinIO
+proxy.ts                Edge proxy (security headers, CSP nonce)
+docker-compose.yml      Local Postgres + Redis + Serverless Redis HTTP + MinIO
 ```
 
 ## Local commands
@@ -110,12 +115,31 @@ docker-compose.yml      Local Postgres + Redis + MinIO
 | `pnpm lint`            | Lint with ESLint                          |
 | `pnpm lint:fix`        | Lint and auto-fix                         |
 | `pnpm typecheck`       | `tsc --noEmit`                            |
+| `pnpm test`            | Run Vitest unit tests once                |
+| `pnpm test:watch`      | Vitest in watch mode                      |
+| `pnpm test:coverage`   | Vitest with v8 coverage reporter          |
 | `pnpm format`          | Format with Prettier                      |
 | `pnpm format:check`    | Format check (used by CI)                 |
-| `docker compose up -d` | Boot Postgres, Redis, MinIO               |
+| `docker compose up -d` | Boot Postgres, Redis, SRH proxy, MinIO    |
 | `docker compose down`  | Stop them                                 |
 
 Pre-commit hook (husky + lint-staged) runs `eslint --fix` and `prettier --write` on staged files automatically. Don't bypass it with `--no-verify` unless you have a real reason.
+
+## Security rules
+
+These apply to every change. The full picture is in [`docs/threat-model.md`](./docs/threat-model.md); below is the always-on subset.
+
+- **Never use `dangerouslySetInnerHTML` on user input.** React escapes by default — let it. For non-React boundaries (CSV, filenames, JSON-echoed strings), use `escapeHtml` / `stripHtmlTags` from `lib/security/sanitize.ts`.
+- **Never call `fetch` with a URL that came (directly or indirectly) from user input.** Use `safeFetch` from `lib/security/ssrf.ts`. It validates the URL, rejects loopback / private ranges, applies a timeout, and disables auto-redirect by default.
+- **Validate every external input with Zod** before you trust it: request bodies, form data, query strings, file uploads, env vars. Reject at the boundary, return typed errors.
+- **Read env vars only via `lib/env.ts`.** Never `process.env` outside that file. New env vars go in the Zod schema (fail-closed) **and** `.env.example` (placeholder).
+- **Rate-limit write paths.** `checkRateLimit` from `lib/rate-limit.ts` with `defaultLimiter` or `strictLimiter`. IP hashing with daily salt is automatic.
+- **Don't roll your own crypto.** Use `crypto.subtle` (Web Crypto) or `node:crypto`. No third-party crypto libs without prior discussion.
+- **Don't disable security headers, CSP, env validation, or lint rules** to make a change land. If a rule is wrong, propose changing it in a separate commit/PR.
+- **Don't commit secrets.** Pre-commit gitleaks catches them locally; CI catches them on push. Real secrets live in your hosting provider's env, never in the repo.
+- **Tools that render parsed user input** (markdown, HTML, JSON) must follow the per-tool checklist in [`docs/threat-model.md#per-tool-security-checklist`](./docs/threat-model.md#per-tool-security-checklist) before merging.
+
+If you need to discuss a real vulnerability, follow [`SECURITY.md`](./SECURITY.md). Don't open public issues.
 
 ## Workflow for any non-trivial change
 
@@ -141,9 +165,10 @@ When you're asked to add a new utility tool to Knack, follow this:
 9. **Register the tool.** Add it to the tool registry (Phase 3 — TBD; the registry will live in `lib/tools/registry.ts`). At minimum: title, description, slug, category, icon.
 10. **Metadata.** Page-level `<metadata>` export with title, description, OG image (auto-generated by the OG route in Phase 3).
 11. **Accessibility.** Labels for every input, focus order makes sense, errors announced to screen readers, keyboard usable end-to-end.
-12. **Manual smoke test.** Run `pnpm dev`, exercise the tool with valid + invalid input, confirm dark/light mode both look good.
-13. **Lint, typecheck, build.** All clean before pushing.
-14. **PR.** Target `dev`. Use the template. Include a screenshot or short clip of the tool in action.
+12. **Security pass.** Walk the per-tool checklist in [`docs/threat-model.md`](./docs/threat-model.md#per-tool-security-checklist): validated inputs, sanitized output, `safeFetch` for outbound, file bounds, rate limit, no leaking logs, friendly failure mode.
+13. **Manual smoke test.** Run `pnpm dev`, exercise the tool with valid + invalid input, confirm dark/light mode both look good.
+14. **Lint, typecheck, test, build.** All clean before pushing.
+15. **PR.** Target `dev`. Use the template. Include a screenshot or short clip of the tool in action.
 
 ## Things to avoid
 
