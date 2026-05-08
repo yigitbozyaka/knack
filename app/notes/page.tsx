@@ -1,13 +1,7 @@
-import dynamic from 'next/dynamic'
-
 import { type Metadata } from 'next'
 
 import { ToolShell } from '@/components/tools/tool-shell'
-
-// NotesApp reads from localStorage on init — disable SSR entirely to avoid hydration mismatch.
-const NotesApp = dynamic(() => import('@/features/notes/NotesApp').then((m) => m.NotesApp), {
-  ssr: false,
-})
+import { NotesAppNoSSR } from '@/features/notes/NotesAppNoSSR'
 
 export const metadata: Metadata = {
   title: 'Scratchpad',
@@ -18,7 +12,7 @@ export const metadata: Metadata = {
 export default function NotesPage() {
   return (
     <ToolShell>
-      <NotesApp />
+      <NotesAppNoSSR />
     </ToolShell>
   )
 }
