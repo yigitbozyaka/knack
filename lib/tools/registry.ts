@@ -5,10 +5,13 @@ export type ToolStatus = 'live' | 'soon'
 
 export const TOOL_ICONS = [
   'braces',
+  'fingerprint',
+  'globe',
   'hash',
   'list-ordered',
   'qr-code',
   'key-round',
+  'shield',
   'file-text',
   'upload',
   'image',
@@ -32,11 +35,35 @@ export interface Tool {
 
 export const TOOLS: readonly Tool[] = [
   {
-    slug: 'json',
-    name: 'JSON formatter',
-    description: 'Pretty-print, minify, and validate JSON. No size cap.',
+    slug: 'generate/secret',
+    name: 'Secret generator',
+    description: 'Generate cryptographic random strings for API keys, JWT secrets, and tokens.',
+    icon: 'shield',
+    status: 'live',
+    category: 'Generators',
+  },
+  {
+    slug: 'generate/uuid',
+    name: 'UUID generator',
+    description: 'Generate RFC-compliant UUID v4 and v7 identifiers in your browser.',
+    icon: 'fingerprint',
+    status: 'live',
+    category: 'Generators',
+  },
+  {
+    slug: 'format',
+    name: 'Formatter',
+    description: 'Pretty-print, minify, and validate JSON, XML, and YAML.',
     icon: 'braces',
-    status: 'soon',
+    status: 'live',
+    category: 'Text & Code',
+  },
+  {
+    slug: 'markdown',
+    name: 'Markdown viewer',
+    description: 'Live markdown preview with syntax highlighting. Safe for untrusted content.',
+    icon: 'file-text',
+    status: 'live',
     category: 'Text & Code',
   },
   {
@@ -64,11 +91,11 @@ export const TOOLS: readonly Tool[] = [
     category: 'Generators',
   },
   {
-    slug: 'password',
+    slug: 'generate/password',
     name: 'Password generator',
     description: 'Strong random passwords with adjustable length and character set.',
     icon: 'key-round',
-    status: 'soon',
+    status: 'live',
     category: 'Generators',
   },
   {
@@ -96,12 +123,28 @@ export const TOOLS: readonly Tool[] = [
     category: 'Storage',
   },
   {
+    slug: 'ip',
+    name: "What's my IP?",
+    description: 'See your public IP address. Nothing is logged or stored.',
+    icon: 'globe',
+    status: 'live',
+    category: 'Network',
+  },
+  {
     slug: 'short',
     name: 'URL shortener',
     description: 'Tiny knack.wtf links. Optional expiry. No tracking.',
     icon: 'link',
     status: 'soon',
     category: 'Network',
+  },
+  {
+    slug: 'notes',
+    name: 'Scratchpad',
+    description: 'Browser-local notes. No account, no server — stored only in this browser.',
+    icon: 'notebook-pen',
+    status: 'live',
+    category: 'Notes',
   },
   {
     slug: 'note',

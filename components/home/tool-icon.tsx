@@ -1,6 +1,8 @@
 import {
   BracesIcon,
   FileTextIcon,
+  FingerprintIcon,
+  GlobeIcon,
   HashIcon,
   ImageIcon,
   KeyRoundIcon,
@@ -9,6 +11,7 @@ import {
   type LucideIcon,
   NotebookPenIcon,
   QrCodeIcon,
+  ShieldIcon,
   UploadIcon,
 } from 'lucide-react'
 
@@ -16,7 +19,10 @@ import { type ToolIcon } from '@/lib/tools/registry'
 
 const ICONS: Record<ToolIcon, LucideIcon> = {
   braces: BracesIcon,
+  fingerprint: FingerprintIcon,
+  globe: GlobeIcon,
   hash: HashIcon,
+  shield: ShieldIcon,
   'list-ordered': ListOrderedIcon,
   'qr-code': QrCodeIcon,
   'key-round': KeyRoundIcon,
