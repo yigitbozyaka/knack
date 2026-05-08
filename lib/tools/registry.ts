@@ -58,6 +58,14 @@ export const TOOLS: readonly Tool[] = [
     category: 'Text & Code',
   },
   {
+    slug: 'markdown',
+    name: 'Markdown viewer',
+    description: 'Live markdown preview with syntax highlighting. Safe for untrusted content.',
+    icon: 'file-text',
+    status: 'live',
+    category: 'Text & Code',
+  },
+  {
     slug: 'base64',
     name: 'Base64 encoder',
     description: 'Encode and decode UTF-8 text and small files to and from base64.',
