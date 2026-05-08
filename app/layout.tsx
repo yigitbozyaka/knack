@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from 'next/font/google'
 import { headers } from 'next/headers'
 
+import { Footer } from '@/components/footer'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
 
@@ -49,6 +50,7 @@ export default async function RootLayout({
             <ThemeToggle />
           </header>
           <main className="flex-1">{children}</main>
+          <Footer />
         </ThemeProvider>
       </body>
     </html>
