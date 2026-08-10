@@ -1,6 +1,5 @@
 import Link from 'next/link'
 
-import { AccountIndicator } from '@/components/auth/account-indicator'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export function SiteHeader() {
@@ -15,7 +14,9 @@ export function SiteHeader() {
           Knack
         </Link>
         <nav className="flex items-center gap-4" aria-label="Primary">
-          <AccountIndicator />
+          <Link href="/account" className="text-muted-foreground hover:text-foreground text-sm">
+            Account
+          </Link>
           <ThemeToggle />
         </nav>
       </div>

@@ -35,8 +35,8 @@ It is **not** a checklist. It's a snapshot of what we believe about who attacks 
                │              │              │
                ▼              ▼              ▼
     ┌──────────────────┐ ┌──────────┐ ┌────────────┐
-    │  Postgres (Neon) │ │ Upstash  │ │ R2 / MinIO │
-    │  via Drizzle     │ │  Redis   │ │ via S3 SDK │
+    │  Postgres (Neon) │ │ R2 / MinIO │
+    │  via Drizzle     │ │ via S3 SDK │
     └──────────────────┘ └──────────┘ └────────────┘
                                 ▲
                                 │ outbound only,
@@ -54,15 +54,15 @@ Anything coming **into** the server is untrusted until validated. Anything going
 
 ## Assets and sensitivity
 
-| Asset                                                                          | Sensitivity  | Where it lives                                               |
-| ------------------------------------------------------------------------------ | ------------ | ------------------------------------------------------------ |
-| Server-side secrets (`DATABASE_URL`, R2 keys, `SESSION_SECRET`, Upstash token) | **critical** | Hosting env, `.env.local` (dev)                              |
-| Session cookies / auth tokens (when added)                                     | **high**     | Browser cookies, signed/HttpOnly                             |
-| User-pasted tool input (text, JSON, etc.)                                      | **medium**   | Memory, sometimes Redis (TTL'd)                              |
-| Uploaded files (images, PDFs)                                                  | **medium**   | R2 / MinIO, scoped per-session                               |
-| Generated artifacts (converted output)                                         | **low**      | Returned to browser, not stored unless user explicitly saves |
-| Server logs                                                                    | **medium**   | Pino, hosting log sink                                       |
-| CI secrets (GitHub Actions tokens, deploy keys)                                | **critical** | GitHub Secrets                                               |
+| Asset                                                           | Sensitivity  | Where it lives                                               |
+| --------------------------------------------------------------- | ------------ | ------------------------------------------------------------ |
+| Server-side secrets (`DATABASE_URL`, R2 keys, `SESSION_SECRET`) | **critical** | Hosting env, `.env.local` (dev)                              |
+| Session cookies / auth tokens (when added)                      | **high**     | Browser cookies, signed/HttpOnly                             |
+| User-pasted tool input (text, JSON, etc.)                       | **medium**   | Memory, sometimes Postgres (TTL'd)                           |
+| Uploaded files (images, PDFs)                                   | **medium**   | R2 / MinIO, scoped per-session                               |
+| Generated artifacts (converted output)                          | **low**      | Returned to browser, not stored unless user explicitly saves |
+| Server logs                                                     | **medium**   | Pino, hosting log sink                                       |
+| CI secrets (GitHub Actions tokens, deploy keys)                 | **critical** | GitHub Secrets                                               |
 
 **Note on user input:** even though tool input is "low sensitivity" from our side, it's the user's data. We don't log it, we don't persist it unless required for the tool, and we don't reuse it.
 
@@ -86,7 +86,7 @@ A row marked _planned_ refers to a control that lands later in the security base
 
 | #   | Threat                                                                    | Mitigation                                                                                                                                                                                                         | State                     |
 | --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| 1   | XSS via user-rendered tool output                                         | React auto-escapes; never `dangerouslySetInnerHTML` raw input; sanitize HTML output via `lib/security/sanitize.ts` when an output is HTML. CSP with nonce-based `script-src`.                                      | partial / planned         |
+| 1   | XSS via user-rendered tool output                                         | React auto-escapes; never `dangerouslySetInnerHTML` raw input; sanitize HTML output via `lib/security/sanitize.ts` when an output is HTML. CSP with `script-src 'self'`.                                           | partial / planned         |
 | 2   | SSRF via user-supplied URL ("fetch this URL" tools)                       | All outbound fetches go through `lib/security/safe-fetch` which rejects private IP ranges, non-HTTP schemes, redirects to private targets.                                                                         | planned                   |
 | 3   | SQL injection                                                             | Drizzle parameterizes by default; raw SQL only via `sql` template tag with explicit bindings. **Lint rule (planned):** ban `sql.raw(...)` outside reviewed helpers.                                                | mitigated by stack        |
 | 4   | Prototype pollution / parser abuse (JSON, YAML, TOML)                     | Use `JSON.parse` for JSON; for YAML/TOML use safe parsers (`yaml` `parse` not `parseDocument(..., { ... })` with merge keys, `@iarna/toml`). Validate result shape with Zod, never `Object.assign({}, userInput)`. | per-tool                  |
@@ -97,7 +97,7 @@ A row marked _planned_ refers to a control that lands later in the security base
 | 9   | Secret leakage via commits                                                | gitleaks pre-commit hook + CI check, `.env*` gitignored, secret values only in hosting env / GitHub Secrets.                                                                                                       | planned (next commit)     |
 | 10  | Vulnerable dependency                                                     | `pnpm audit --prod` in CI (high/critical fail), Dependabot weekly PRs to `dev`. Manual review for major bumps.                                                                                                     | planned                   |
 | 11  | Compromised CI runner                                                     | Pin GitHub Actions by SHA where feasible; minimum permissions per workflow (`permissions: contents: read` default); secrets scoped to needed jobs only.                                                            | partial                   |
-| 12  | Public abuse — repeated requests, mass tool calls                         | Sliding-window rate limit per IP+route via Upstash; hashed IPs with daily-rotating salt so logs aren't a tracking ledger.                                                                                          | planned (next commit)     |
+| 12  | Public abuse — repeated requests, mass tool calls                         | Fixed-window rate limit per IP+route in Postgres; hashed IPs with daily-rotating salt so logs aren't a tracking ledger.                                                                                            | planned (next commit)     |
 | 13  | Click-jacking on tool pages with no sensitive action                      | `frame-ancestors 'none'` in CSP; `X-Frame-Options: DENY` for older browsers.                                                                                                                                       | planned (CSP commit)      |
 | 14  | MIME confusion / drive-by download                                        | `X-Content-Type-Options: nosniff`; explicit `Content-Disposition: attachment` for user-generated downloads; never serve user content from the same origin as the app shell when possible.                          | planned                   |
 | 15  | Open redirect                                                             | If we ever add a redirect param, allowlist destinations; never echo arbitrary `?next=` to `Location`.                                                                                                              | by-design                 |
@@ -126,7 +126,7 @@ Every new tool PR (the "Add a new tool" flow in `CLAUDE.md`) must be able to ans
 2. **Output rendering.** Is any output rendered as HTML? If yes, is it sanitized (`lib/security/sanitize.ts`) or escaped by React's default?
 3. **Outbound calls.** Does the tool fetch anything server-side? If yes, does it use `safeFetch`?
 4. **File handling.** Does the tool read user-supplied files? Are size, type, and count bounded? Streamed where possible?
-5. **Persistence.** Does the tool write to DB / Redis / R2? Are keys namespaced per session/user? Is there a TTL?
+5. **Persistence.** Does the tool write to DB / R2? Are keys namespaced per session/user? Is there a TTL?
 6. **Rate limiting.** Is the route covered by the default limiter, or does it need a stricter custom limit (file upload, third-party fetch)?
 7. **Logs.** Are we logging anything we shouldn't? (User input, full request bodies, headers with auth.)
 8. **Failure mode.** When validation fails, do we return a friendly typed error without leaking internal structure (stack traces, env names, file paths)?
@@ -142,7 +142,7 @@ If a tool can't answer "no concern" or "covered by existing control" for any of 
 | `data:` URLs     | `data:` is in `ALLOWED_URI_REGEXP` to support inline images in markdown. The `afterSanitizeAttributes` hook rewrites `data:` (and `javascript:`) hrefs on `<a>` to `#`, preventing link-navigation to data:text/html XSS payloads. Images are unaffected.               |
 | Outbound calls   | None. Runs entirely in the browser.                                                                                                                                                                                                                                     |
 | File handling    | None.                                                                                                                                                                                                                                                                   |
-| Persistence      | None. No DB, Redis, or R2 writes.                                                                                                                                                                                                                                       |
+| Persistence      | None. No DB or R2 writes.                                                                                                                                                                                                                                               |
 | Rate limiting    | No server-side route — client-only tool. N/A.                                                                                                                                                                                                                           |
 | Logs             | Nothing logged.                                                                                                                                                                                                                                                         |
 | Failure mode     | Marked and DOMPurify never throw user-visible errors; malformed input is silently rendered as-is or stripped.                                                                                                                                                           |

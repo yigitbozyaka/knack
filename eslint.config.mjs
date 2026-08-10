@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     'test-results/**',
     'next-env.d.ts',
     'node_modules/**',
+    '.claude/**',
   ]),
 
   ...nextVitals,

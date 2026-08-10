@@ -18,7 +18,6 @@ Knack ([knack.wtf](https://knack.wtf)) is an open-source, all-in-one web utiliti
 - TypeScript — `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`
 - Tailwind CSS 4 + shadcn/ui (neutral, CSS variables, dark mode via `next-themes`)
 - PostgreSQL + Drizzle ORM (Neon in prod, Postgres-in-Docker in dev)
-- Upstash Redis (Redis-in-Docker in dev)
 - Cloudflare R2 (MinIO in dev)
 - Zod for all runtime validation
 - Vitest + Playwright for tests
@@ -93,9 +92,8 @@ components/
 lib/
   env.ts                Zod-validated env loader — only place that reads process.env
   utils.ts              cn() helper and other tiny utilities
-  rate-limit.ts         Sliding-window limiter on Upstash, hashed-IP keying
+  rate-limit.ts         Fixed-window limiter on Postgres, hashed-IP keying
   email/                Outbound email helpers (currently stub)
-  redis/                Upstash REST client wrapper
   security/             sanitize.ts (escape helpers), ssrf.ts (safeFetch)
   db/                   Drizzle client (lib/db/client.ts), schemas (lib/db/schema/*), migrations (lib/db/migrations/*)
   storage/              S3 client + presigned URL helpers + magic-byte mime sniffing
@@ -104,9 +102,8 @@ lib/
   errors.ts             Typed AppError subclasses (Unauthorized, RateLimit, Validation, …)
 hooks/                  Reusable React hooks
 public/                 Static assets
-proxy.ts                Edge proxy (security headers, CSP nonce)
 scripts/                tsx scripts: migrate.ts, seed.ts
-docker-compose.yml      Local Postgres + Redis + Serverless Redis HTTP + MinIO
+docker-compose.yml      Local Postgres + MinIO
 ```
 
 ## Local commands
@@ -129,7 +126,7 @@ docker-compose.yml      Local Postgres + Redis + Serverless Redis HTTP + MinIO
 | `pnpm db:seed`         | Seed a demo account (dev only)            |
 | `pnpm db:studio`       | Open Drizzle Studio                       |
 | `pnpm db:push`         | Push schema directly (dev experiments)    |
-| `docker compose up -d` | Boot Postgres, Redis, SRH proxy, MinIO    |
+| `docker compose up -d` | Boot Postgres and MinIO                   |
 | `docker compose down`  | Stop them                                 |
 
 Pre-commit hook (husky + lint-staged) runs `eslint --fix` and `prettier --write` on staged files automatically. Don't bypass it with `--no-verify` unless you have a real reason.
