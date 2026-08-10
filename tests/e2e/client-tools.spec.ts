@@ -64,7 +64,10 @@ test.describe('Markdown viewer', () => {
   test('renders heading from markdown', async ({ page }) => {
     await page.goto('/markdown')
     const textarea = page.getByLabel('Markdown input')
-    await textarea.fill('# Hello Playwright')
+    await expect(async () => {
+      await textarea.fill('# Hello Playwright')
+      await expect(textarea).toHaveValue('# Hello Playwright', { timeout: 1000 })
+    }).toPass()
     const preview = page.locator('.markdown-body')
     await expect(preview.locator('h1')).toHaveText('Hello Playwright')
   })
