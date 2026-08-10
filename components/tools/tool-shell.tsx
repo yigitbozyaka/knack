@@ -5,14 +5,16 @@ import Link from 'next/link'
 import { ChevronLeftIcon } from 'lucide-react'
 
 import { ToolErrorBoundary } from '@/components/tools/tool-error-boundary'
+import { cn } from '@/lib/utils'
 
 interface ToolShellProps {
   children: ReactNode
+  wide?: boolean
 }
 
-export function ToolShell({ children }: ToolShellProps) {
+export function ToolShell({ children, wide = false }: ToolShellProps) {
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8">
+    <div className={cn('mx-auto w-full px-4 py-8', wide ? 'max-w-[100rem]' : 'max-w-4xl')}>
       <nav className="mb-6">
         <Link
           href="/"

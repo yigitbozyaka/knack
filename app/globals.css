@@ -129,6 +129,12 @@
   }
 }
 
+.markdown-workspace:fullscreen {
+  height: 100dvh;
+  padding: 1rem;
+  background: var(--background);
+}
+
 /* Markdown preview typography */
 .markdown-body {
   font-size: 0.9rem;
@@ -170,8 +176,17 @@
     margin: 0.75em 0;
     padding-left: 1.5em;
   }
+  ul {
+    list-style: disc;
+  }
+  ol {
+    list-style: decimal;
+  }
   li {
     margin: 0.25em 0;
+  }
+  li:has(> input[type='checkbox']) {
+    list-style: none;
   }
 
   blockquote {
