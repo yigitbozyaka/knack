@@ -219,16 +219,12 @@
         "accounts_token_hash_unique": {
           "name": "accounts_token_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         },
         "accounts_token_lookup_unique": {
           "name": "accounts_token_lookup_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_lookup"
-          ]
+          "columns": ["token_lookup"]
         }
       },
       "policies": {},
@@ -351,10 +347,7 @@
       "compositePrimaryKeys": {
         "rate_limits_key_window_start_pk": {
           "name": "rate_limits_key_window_start_pk",
-          "columns": [
-            "key",
-            "window_start"
-          ]
+          "columns": ["key", "window_start"]
         }
       },
       "uniqueConstraints": {},
@@ -442,12 +435,8 @@
           "name": "pastes_account_id_accounts_id_fk",
           "tableFrom": "pastes",
           "tableTo": "accounts",
-          "columnsFrom": [
-            "account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["account_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -457,9 +446,7 @@
         "pastes_slug_unique": {
           "name": "pastes_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         }
       },
       "policies": {},

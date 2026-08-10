@@ -12,7 +12,14 @@ export function SiteHeader() {
           className="text-foreground flex items-center gap-2 text-base font-semibold tracking-tight"
           aria-label="Knack — home"
         >
-          <Image src="/icon-192.png" alt="" width={26} height={26} priority className="rounded-md" />
+          <Image
+            src="/icon-192.png"
+            alt=""
+            width={26}
+            height={26}
+            priority
+            className="rounded-md"
+          />
           Knack
         </Link>
         <nav className="flex items-center gap-4" aria-label="Primary">
