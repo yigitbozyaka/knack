@@ -8,7 +8,7 @@ export default defineConfig({
     globals: false,
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
-    exclude: ['**/node_modules/**', '**/.next/**', '**/dist/**'],
+    exclude: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/.claude/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
