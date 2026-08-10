@@ -103,7 +103,7 @@ export const TOOLS: readonly Tool[] = [
     name: 'Paste',
     description: 'Share text snippets with optional expiry. Anonymous or signed-in.',
     icon: 'file-text',
-    status: 'soon',
+    status: 'live',
     category: 'Storage',
   },
   {
