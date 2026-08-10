@@ -1,24 +1,12 @@
-import { Ratelimit } from '@upstash/ratelimit'
+import { sql } from 'drizzle-orm'
 
+import { db } from '@/lib/db/client'
+import { rateLimits } from '@/lib/db/schema'
 import { env } from '@/lib/env'
-import { redis } from '@/lib/redis/client'
-
-// Knack's rate limiter, layered on Upstash's sliding-window primitive.
-//
-// Two design choices worth knowing:
-//
-// 1. Identifiers (typically IPs) are SHA-256 hashed with a daily-rotating
-//    salt before becoming Redis keys. So Redis is never a tracking ledger
-//    that maps a key back to an IP — keys age out as the salt rotates.
-//
-// 2. Limiters are memoized per `(prefix, requests, window)` so we don't
-//    rebuild a `Ratelimit` instance per request.
-
-type Duration = `${number} ${'ms' | 's' | 'm' | 'h' | 'd'}`
 
 export interface RateLimitConfig {
   requests: number
-  window: Duration
+  windowMs: number
   prefix: string
 }
 
@@ -26,50 +14,39 @@ export interface RateLimitResult {
   ok: boolean
   limit: number
   remaining: number
-  /** Unix milliseconds when the limit resets. */
   reset: number
 }
 
+const MINUTE = 60_000
+const HOUR = 60 * MINUTE
+
 export const defaultLimiter: RateLimitConfig = {
   requests: 60,
-  window: '60 s',
+  windowMs: MINUTE,
   prefix: 'default',
 }
 
 export const strictLimiter: RateLimitConfig = {
   requests: 10,
-  window: '60 s',
+  windowMs: MINUTE,
   prefix: 'strict',
 }
 
 export const accountCreateLimiter: RateLimitConfig = {
   requests: 5,
-  window: '1 h',
+  windowMs: HOUR,
   prefix: 'auth:create',
 }
 
 export const signInLimiter: RateLimitConfig = {
   requests: 10,
-  window: '1 h',
+  windowMs: HOUR,
   prefix: 'auth:signin',
 }
 
-const limiterCache = new Map<string, Ratelimit>()
+export const RATE_LIMIT_RETENTION_MS = 24 * HOUR
 
-function buildLimiter(config: RateLimitConfig): Ratelimit {
-  const cacheKey = `${config.prefix}:${String(config.requests)}:${config.window}`
-  const existing = limiterCache.get(cacheKey)
-  if (existing) return existing
-
-  const limiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(config.requests, config.window),
-    analytics: false,
-    prefix: `knack:ratelimit:${config.prefix}`,
-  })
-  limiterCache.set(cacheKey, limiter)
-  return limiter
-}
+const BACKEND_TIMEOUT_MS = 1_000
 
 function bytesToBase64Url(bytes: Uint8Array): string {
   let binary = ''
@@ -88,22 +65,66 @@ async function hashIdentifier(identifier: string): Promise<string> {
   return bytesToBase64Url(new Uint8Array(digest)).slice(0, 24)
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`rate limit backend timed out after ${String(ms)}ms`))
+    }, ms)
+  })
+
+  try {
+    return await Promise.race([promise, timeout])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function consume(key: string, windowStart: Date): Promise<number> {
+  const rows = await db
+    .insert(rateLimits)
+    .values({ key, windowStart, count: 1 })
+    .onConflictDoUpdate({
+      target: [rateLimits.key, rateLimits.windowStart],
+      set: { count: sql`${rateLimits.count} + 1` },
+    })
+    .returning({ count: rateLimits.count })
+
+  return rows[0]?.count ?? 1
+}
+
 export async function checkRateLimit(
   identifier: string,
   config: RateLimitConfig = defaultLimiter,
 ): Promise<RateLimitResult> {
-  if (!env.RATE_LIMIT_ENABLED) {
-    return { ok: true, limit: config.requests, remaining: config.requests, reset: 0 }
+  const unlimited: RateLimitResult = {
+    ok: true,
+    limit: config.requests,
+    remaining: config.requests,
+    reset: 0,
   }
 
-  const hashed = await hashIdentifier(identifier)
-  const limiter = buildLimiter(config)
-  const result = await limiter.limit(hashed)
+  if (!env.RATE_LIMIT_ENABLED) return unlimited
 
-  return {
-    ok: result.success,
-    limit: result.limit,
-    remaining: result.remaining,
-    reset: result.reset,
+  try {
+    const hashed = await hashIdentifier(identifier)
+    const startMs = Math.floor(Date.now() / config.windowMs) * config.windowMs
+    const used = await withTimeout(
+      consume(`${config.prefix}:${hashed}`, new Date(startMs)),
+      BACKEND_TIMEOUT_MS,
+    )
+
+    return {
+      ok: used <= config.requests,
+      limit: config.requests,
+      remaining: Math.max(0, config.requests - used),
+      reset: startMs + config.windowMs,
+    }
+  } catch (error) {
+    console.error(
+      `[rate-limit] backend unavailable for prefix "${config.prefix}", allowing request`,
+      error,
+    )
+    return unlimited
   }
 }

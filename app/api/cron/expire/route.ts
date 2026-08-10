@@ -5,8 +5,9 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { eq, lt } from 'drizzle-orm'
 
 import { db } from '@/lib/db/client'
-import { expirableObjects } from '@/lib/db/schema'
+import { expirableObjects, rateLimits } from '@/lib/db/schema'
 import { env } from '@/lib/env'
+import { RATE_LIMIT_RETENTION_MS } from '@/lib/rate-limit'
 import { deleteObject } from '@/lib/storage/upload'
 
 export const runtime = 'nodejs'
@@ -66,6 +67,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
   }
+
+  await db
+    .delete(rateLimits)
+    .where(lt(rateLimits.windowStart, new Date(Date.now() - RATE_LIMIT_RETENTION_MS)))
 
   return NextResponse.json({ processed, errors })
 }
