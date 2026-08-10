@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function MarkdownPage() {
   return (
-    <ToolShell>
+    <ToolShell wide>
       <MarkdownViewer />
     </ToolShell>
   )

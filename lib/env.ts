@@ -9,9 +9,6 @@ const serverSchema = z.object({
 
   DATABASE_URL: z.url(),
 
-  UPSTASH_REDIS_REST_URL: z.url(),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
-
   S3_ENDPOINT: z.url(),
   S3_REGION: z.string().min(1),
   S3_ACCESS_KEY_ID: z.string().min(1),
