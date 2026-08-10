@@ -2,8 +2,6 @@ const defaults: Record<string, string> = {
   NODE_ENV: 'test',
   NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
   DATABASE_URL: 'postgres://knack:knack@localhost:5432/knack',
-  UPSTASH_REDIS_REST_URL: 'http://localhost:8079',
-  UPSTASH_REDIS_REST_TOKEN: 'test-token',
   S3_ENDPOINT: 'http://localhost:9000',
   S3_REGION: 'auto',
   S3_ACCESS_KEY_ID: 'test',

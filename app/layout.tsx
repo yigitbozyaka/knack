@@ -1,5 +1,4 @@
 import { Geist, Geist_Mono } from 'next/font/google'
-import { headers } from 'next/headers'
 
 import { SiteFooter } from '@/components/layout/site-footer'
 import { SiteHeader } from '@/components/layout/site-header'
@@ -53,13 +52,11 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const nonce = (await headers()).get('x-nonce') ?? undefined
-
   return (
     <html
       lang="en"
@@ -72,7 +69,6 @@ export default async function RootLayout({
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
-          nonce={nonce}
         >
           <SiteHeader />
           <main className="flex-1">{children}</main>

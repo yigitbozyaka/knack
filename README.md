@@ -29,7 +29,7 @@ A few load-bearing decisions worth knowing before you contribute:
 - **Token-only accounts.** No email, no password, no recovery. We give you a 20-digit token, store an Argon2id hash plus a deterministic HMAC lookup hash, and you sign in by pasting the token back. Lose it, account's gone.
 - **Presigned uploads.** Files never proxy through Next — the client gets a presigned PUT URL, uploads directly to R2/MinIO, and the server only stores metadata.
 - **Expirable resources.** Anything that should auto-delete (pastes, notes, uploads, short links) writes a row to `expirable_objects` with an `expires_at`. A scheduled cron (`/api/cron/expire`) sweeps the table and deletes the storage object + resource.
-- **Rate limiting at every mutation.** Identifiers are SHA-256 hashed with a daily-rotating salt before being written to Redis, so the rate-limit store is never a tracking ledger.
+- **Rate limiting at every mutation.** Identifiers are SHA-256 hashed with a daily-rotating salt before being written to the `rate_limits` table, so the rate-limit store is never a tracking ledger.
 - **Hashed-IP everywhere we touch IPs.** Abuse reports, rate-limit keys — never raw IPs.
 
 ## Features
@@ -51,7 +51,6 @@ The full roadmap lives in [GitHub Issues](https://github.com/yigitbozyaka/knack/
 - **TypeScript** — strict mode, `noUncheckedIndexedAccess`, `noImplicitOverride`
 - **[Tailwind CSS 4](https://tailwindcss.com)** + **[shadcn/ui](https://ui.shadcn.com)** — neutral palette, CSS variables, dark mode via `next-themes`
 - **PostgreSQL** + **[Drizzle ORM](https://orm.drizzle.team)** — Neon in production, Postgres-in-Docker for dev
-- **[Upstash Redis](https://upstash.com/)** — rate limiting, ephemeral state (Redis-in-Docker for dev)
 - **[Cloudflare R2](https://developers.cloudflare.com/r2/)** — object storage for uploads (MinIO for dev)
 - **[Zod](https://zod.dev)** — runtime validation for every external input and env var
 - **[Vitest](https://vitest.dev)** + **[Playwright](https://playwright.dev)** — unit and e2e tests
@@ -67,7 +66,7 @@ git clone https://github.com/yigitbozyaka/knack.git
 cd knack
 pnpm install
 
-# 2. Boot local infrastructure (Postgres, Redis, MinIO)
+# 2. Boot local infrastructure (Postgres, MinIO)
 docker compose up -d
 
 # 3. Configure environment
