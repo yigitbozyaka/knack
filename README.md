@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="Knack" width="120" height="120">
+</p>
+
 # Knack
 
 > An open-source, all-in-one web utilities app — every tool you keep googling, in one place.
