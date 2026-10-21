@@ -8,9 +8,7 @@ import { CopyButton } from '@/components/tools/copy-button'
 import { ToolPageHeader } from '@/components/tools/tool-page-header'
 
 type State =
-  | { status: 'loading' }
-  | { status: 'ok'; ip: string }
-  | { status: 'error'; message: string }
+  { status: 'loading' } | { status: 'ok'; ip: string } | { status: 'error'; message: string }
 
 export function IpViewer() {
   const [state, setState] = useState<State>({ status: 'loading' })

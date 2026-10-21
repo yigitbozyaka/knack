@@ -5,8 +5,7 @@ export interface Rgb {
 }
 
 export type ParseResult =
-  | { ok: true; rgb: Rgb; gamutMapped: boolean }
-  | { ok: false; error: string }
+  { ok: true; rgb: Rgb; gamutMapped: boolean } | { ok: false; error: string }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 

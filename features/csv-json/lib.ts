@@ -21,8 +21,7 @@ export interface ConvertError {
 export type ConvertResult = { ok: true; output: string } | { ok: false; error: ConvertError }
 
 type ParseRowsResult =
-  | { ok: true; rows: string[][]; lines: number[] }
-  | { ok: false; error: ConvertError }
+  { ok: true; rows: string[][]; lines: number[] } | { ok: false; error: ConvertError }
 
 type Cell = string | number | boolean | null | undefined | object
 
