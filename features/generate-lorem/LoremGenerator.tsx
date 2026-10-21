@@ -22,6 +22,7 @@ const UNITS: { value: LoremUnit; label: string }[] = [
 export function LoremGenerator() {
   const [unit, setUnit] = useState<LoremUnit>('paragraphs')
   const [count, setCount] = useState(3)
+  const [countText, setCountText] = useState('3')
   const [startWithLorem, setStartWithLorem] = useState(true)
   const [output, setOutput] = useState(() =>
     generateLorem({ unit: 'paragraphs', count: 3, startWithLorem: true }),
@@ -33,8 +34,18 @@ export function LoremGenerator() {
     const nextStart = next.startWithLorem ?? startWithLorem
     setUnit(nextUnit)
     setCount(nextCount)
+    setCountText(String(nextCount))
     setStartWithLorem(nextStart)
     setOutput(generateLorem({ unit: nextUnit, count: nextCount, startWithLorem: nextStart }))
+  }
+
+  const editCount = (text: string) => {
+    setCountText(text)
+    const parsed = parseInt(text, 10)
+    if (Number.isNaN(parsed)) return
+    const nextCount = clampCount(unit, parsed)
+    setCount(nextCount)
+    setOutput(generateLorem({ unit, count: nextCount, startWithLorem }))
   }
 
   return (
@@ -70,9 +81,12 @@ export function LoremGenerator() {
             inputMode="numeric"
             min={1}
             max={LOREM_LIMITS[unit]}
-            value={count}
+            value={countText}
             onChange={(event) => {
-              apply({ count: parseInt(event.target.value, 10) })
+              editCount(event.target.value)
+            }}
+            onBlur={() => {
+              setCountText(String(count))
             }}
           />
         </div>

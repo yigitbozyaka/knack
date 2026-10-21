@@ -4,7 +4,9 @@ export interface Rgb {
   b: number
 }
 
-export type ParseResult = { ok: true; rgb: Rgb } | { ok: false; error: string }
+export type ParseResult =
+  | { ok: true; rgb: Rgb; gamutMapped: boolean }
+  | { ok: false; error: string }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -32,6 +34,7 @@ function parseHex(input: string): ParseResult {
   if (full.length !== 6) return fail('Hex colors need 3 or 6 digits, e.g. #1a2b3c.')
   return {
     ok: true,
+    gamutMapped: false,
     rgb: {
       r: parseInt(full.slice(0, 2), 16),
       g: parseInt(full.slice(2, 4), 16),
@@ -43,7 +46,8 @@ function parseHex(input: string): ParseResult {
 function functionArgs(input: string, name: string): string[] | null {
   const match = new RegExp(String.raw`^${name}\(\s*([^)]*?)\s*\)$`, 'i').exec(input)
   if (!match?.[1]) return null
-  return match[1].split(/\s*,\s*|\s+/).filter(Boolean)
+  const withoutAlpha = match[1].replace(/\s*\/.*$/, '')
+  return withoutAlpha.split(/\s*,\s*|\s+/).filter(Boolean)
 }
 
 function toNumber(token: string, percentScale?: number): number | null {
@@ -74,7 +78,7 @@ function parseRgbFunction(input: string): ParseResult {
   if ([r, g, b].some((value) => value < 0 || value > 255)) {
     return fail('RGB channels must be between 0 and 255.')
   }
-  return { ok: true, rgb: { r, g, b } }
+  return { ok: true, rgb: { r, g, b }, gamutMapped: false }
 }
 
 function parseHslFunction(input: string): ParseResult {
@@ -89,22 +93,25 @@ function parseHslFunction(input: string): ParseResult {
   if (saturation < 0 || saturation > 100 || lightness < 0 || lightness > 100) {
     return fail('Saturation and lightness must be between 0% and 100%.')
   }
-  return { ok: true, rgb: hslToRgb(hue, saturation, lightness) }
+  return { ok: true, rgb: hslToRgb(hue, saturation, lightness), gamutMapped: false }
 }
 
 function parseOklchFunction(input: string): ParseResult {
-  const args = functionArgs(input.replace(/\s*\/\s*[^)]*\)$/, ')'), 'oklch')
+  const args = functionArgs(input, 'oklch')
   if (args?.length !== 3) return fail('Use oklch(0.62 0.2 250).')
-  const lightness = toNumber(args[0] ?? '', 1)
-  const chroma = toNumber(args[1] ?? '', 0.4)
-  const hue = toAngle(args[2] ?? '')
+  const component = (token: string | undefined, read: (token: string) => number | null) =>
+    token?.toLowerCase() === 'none' ? 0 : read(token ?? '')
+  const lightness = component(args[0], (token) => toNumber(token, 1))
+  const chroma = component(args[1], (token) => toNumber(token, 0.4))
+  const hue = component(args[2], toAngle)
   if (lightness === null || chroma === null || hue === null) {
     return fail('OKLCH needs lightness, chroma and hue.')
   }
   if (lightness < 0 || lightness > 1)
     return fail('OKLCH lightness must be between 0 and 1 (or 0–100%).')
   if (chroma < 0) return fail('OKLCH chroma cannot be negative.')
-  return { ok: true, rgb: oklchToRgb(lightness, chroma, hue) }
+  const { rgb, gamutMapped } = mapOklchToRgb(lightness, chroma, hue)
+  return { ok: true, rgb, gamutMapped }
 }
 
 export function parseColor(input: string): ParseResult {
@@ -171,18 +178,55 @@ export function rgbToOklch({ r, g, b }: Rgb): { l: number; c: number; h: number 
   return { l: lightness, c: chroma, h: hue }
 }
 
-export function oklchToRgb(lightness: number, chroma: number, hue: number): Rgb {
+const GAMUT_EPSILON = 1e-6
+
+function oklchToLinearRgb(
+  lightness: number,
+  chroma: number,
+  hue: number,
+): [number, number, number] {
   const radians = (hue * Math.PI) / 180
   const a = chroma * Math.cos(radians)
   const b = chroma * Math.sin(radians)
   const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3
   const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3
   const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3
-  return {
-    r: fromLinear(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-    g: fromLinear(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
-    b: fromLinear(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
+  return [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ]
+}
+
+const isInGamut = (linear: [number, number, number]) =>
+  linear.every((value) => value >= -GAMUT_EPSILON && value <= 1 + GAMUT_EPSILON)
+
+export function mapOklchToRgb(
+  lightness: number,
+  chroma: number,
+  hue: number,
+): { rgb: Rgb; gamutMapped: boolean } {
+  let linear = oklchToLinearRgb(lightness, chroma, hue)
+  let gamutMapped = false
+  if (!isInGamut(linear)) {
+    gamutMapped = true
+    let low = 0
+    let high = chroma
+    for (let step = 0; step < 24; step++) {
+      const middle = (low + high) / 2
+      if (isInGamut(oklchToLinearRgb(lightness, middle, hue))) low = middle
+      else high = middle
+    }
+    linear = oklchToLinearRgb(lightness, low, hue)
   }
+  return {
+    rgb: { r: fromLinear(linear[0]), g: fromLinear(linear[1]), b: fromLinear(linear[2]) },
+    gamutMapped,
+  }
+}
+
+export function oklchToRgb(lightness: number, chroma: number, hue: number): Rgb {
+  return mapOklchToRgb(lightness, chroma, hue).rgb
 }
 
 export function formatHex(rgb: Rgb): string {
@@ -204,7 +248,7 @@ export function formatHsl(rgb: Rgb): string {
     g: Math.round(clamp(rgb.g, 0, 255)),
     b: Math.round(clamp(rgb.b, 0, 255)),
   })
-  return `hsl(${String(Math.round(h) % 360)}, ${String(Math.round(s))}%, ${String(Math.round(l))}%)`
+  return `hsl(${String(round(h, 1) % 360)}, ${String(round(s, 1))}%, ${String(round(l, 1))}%)`
 }
 
 export function formatOklch(rgb: Rgb): string {

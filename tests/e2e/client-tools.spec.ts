@@ -230,6 +230,16 @@ test.describe('Lorem ipsum generator', () => {
     expect(text.split('\n\n')).toHaveLength(5)
   })
 
+  test('lets the count field be cleared and retyped', async ({ page }) => {
+    await page.goto('/generate/lorem')
+    const count = page.getByLabel(/count/i)
+    await count.clear()
+    await count.pressSequentially('5')
+    await expect(count).toHaveValue('5')
+    const text = (await page.locator('[data-testid="lorem-output"]').textContent()) ?? ''
+    expect(text.split('\n\n')).toHaveLength(5)
+  })
+
   test('has a copy button', async ({ page }) => {
     await page.goto('/generate/lorem')
     await expect(page.getByRole('button', { name: /copy text/i })).toBeVisible()
@@ -308,5 +318,16 @@ test.describe('Color converter', () => {
     await expect(page.getByTestId('contrast-aa-normal')).toHaveAttribute('data-pass', 'false')
     await expect(page.getByTestId('contrast-aa-large')).toHaveAttribute('data-pass', 'true')
     await expect(page.getByTestId('contrast-aaa-normal')).toHaveAttribute('data-pass', 'false')
+  })
+})
+
+test.describe('Color converter gamut mapping', () => {
+  test('shows a notice when an OKLCH color is out of the sRGB gamut', async ({ page }) => {
+    await page.goto('/color')
+    await expect(page.getByTestId('color-gamut-warning')).toHaveCount(0)
+    await page.getByTestId('color-oklch').fill('oklch(0.7 0.4 150)')
+    await expect(page.getByTestId('color-gamut-warning')).toBeVisible()
+    await page.getByTestId('color-hex').fill('#336699')
+    await expect(page.getByTestId('color-gamut-warning')).toHaveCount(0)
   })
 })

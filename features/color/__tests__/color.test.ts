@@ -7,6 +7,7 @@ import {
   formatOklch,
   formatRgb,
   parseColor,
+  rgbToOklch,
   wcagLevels,
 } from '../lib'
 
@@ -41,6 +42,29 @@ describe('parseColor', () => {
     expect(formatHex(rgbOf('oklch(62.8% 0.2577 29.23)'))).toBe('#ff0000')
   })
 
+  it('accepts slash alpha for rgb, hsl and oklch and none for oklch components', () => {
+    expect(formatHex(rgbOf('rgb(255 0 0 / 50%)'))).toBe('#ff0000')
+    expect(formatHex(rgbOf('hsl(0 100% 50% / 0.5)'))).toBe('#ff0000')
+    expect(formatHex(rgbOf('oklch(62.8% 0.2577 29.23 / 0.5)'))).toBe('#ff0000')
+    expect(formatHex(rgbOf('oklch(1 0 none)'))).toBe('#ffffff')
+  })
+
+  it('maps out-of-gamut oklch by reducing chroma and preserves hue and lightness', () => {
+    const result = parseColor('oklch(0.7 0.4 150)')
+    if (!result.ok) throw new Error(result.error)
+    expect(result.gamutMapped).toBe(true)
+    const mapped = rgbToOklch(result.rgb)
+    expect(mapped.l).toBeCloseTo(0.7, 1)
+    expect(Math.abs(mapped.h - 150)).toBeLessThan(3)
+    expect(mapped.c).toBeLessThan(0.4)
+  })
+
+  it('does not flag in-gamut colors as mapped', () => {
+    const result = parseColor('oklch(0.5 0.05 200)')
+    if (!result.ok) throw new Error(result.error)
+    expect(result.gamutMapped).toBe(false)
+  })
+
   it('rejects malformed input with a message', () => {
     for (const bad of [
       '',
@@ -66,6 +90,12 @@ describe('formatting', () => {
     expect(formatRgb(red)).toBe('rgb(255, 0, 0)')
     expect(formatHsl(red)).toBe('hsl(0, 100%, 50%)')
     expect(formatOklch(red)).toBe('oklch(0.628 0.2577 29.23)')
+  })
+
+  it('keeps one decimal in hsl so copied values round-trip', () => {
+    for (const hex of ['#1a2b3c', '#ff8800', '#00ff99', '#c0ffee', '#123456', '#abcdef']) {
+      expect(formatHex(rgbOf(formatHsl(rgbOf(hex))))).toBe(hex)
+    }
   })
 
   it('formats white and black with zero chroma', () => {

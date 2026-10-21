@@ -12,7 +12,11 @@ function okOutput(result: ReturnType<typeof csvToJson>): string {
 describe('parseCsvRows', () => {
   it('parses quoted fields with delimiters, escaped quotes and newlines', () => {
     const parsed = parseCsvRows('a,"b,1","say ""hi""","line1\nline2"', ',')
-    expect(parsed).toEqual({ ok: true, rows: [['a', 'b,1', 'say "hi"', 'line1\nline2']] })
+    expect(parsed).toEqual({
+      ok: true,
+      rows: [['a', 'b,1', 'say "hi"', 'line1\nline2']],
+      lines: [1],
+    })
   })
 
   it('handles CRLF, CR and a trailing newline', () => {
@@ -22,16 +26,25 @@ describe('parseCsvRows', () => {
         ['a', 'b'],
         ['1', '2'],
       ],
+      lines: [1, 2],
     })
-    expect(parseCsvRows('a\rb', ',')).toEqual({ ok: true, rows: [['a'], ['b']] })
+    expect(parseCsvRows('a\rb', ',')).toEqual({ ok: true, rows: [['a'], ['b']], lines: [1, 2] })
   })
 
   it('keeps empty fields and strips a BOM', () => {
-    expect(parseCsvRows('﻿a,,c', ',')).toEqual({ ok: true, rows: [['a', '', 'c']] })
+    expect(parseCsvRows('\uFEFFa,,c', ',')).toEqual({
+      ok: true,
+      rows: [['a', '', 'c']],
+      lines: [1],
+    })
   })
 
   it('honours other delimiters', () => {
-    expect(parseCsvRows('a;b\t1|2', ';')).toEqual({ ok: true, rows: [['a', 'b\t1|2']] })
+    expect(parseCsvRows('a;b\t1|2', ';')).toEqual({
+      ok: true,
+      rows: [['a', 'b\t1|2']],
+      lines: [1],
+    })
   })
 
   it('reports an unterminated quote with its position', () => {
@@ -52,6 +65,19 @@ describe('parseCsvRows', () => {
     expect(parseCsvRows('"a"b', ',').ok).toBe(false)
   })
 
+  it('keeps quoted empty records and skips unquoted blank lines', () => {
+    expect(parseCsvRows('v\n""\nx', ',')).toEqual({
+      ok: true,
+      rows: [['v'], [''], ['x']],
+      lines: [1, 2, 3],
+    })
+    expect(parseCsvRows('v\n\nx\n', ',')).toEqual({
+      ok: true,
+      rows: [['v'], ['x']],
+      lines: [1, 3],
+    })
+  })
+
   it('rejects unusable delimiters', () => {
     expect(parseCsvRows('a', '"').ok).toBe(false)
     expect(parseCsvRows('a', ',,').ok).toBe(false)
@@ -59,6 +85,23 @@ describe('parseCsvRows', () => {
 })
 
 describe('csvToJson', () => {
+  it('reports the physical line of a bad row after a multi-line quoted field', () => {
+    const result = csvToJson('a,b\n"x\ny",2\n3', COMMA)
+    expect(result).toMatchObject({ ok: false, error: { line: 4 } })
+  })
+
+  it('reports the physical line of a bad row after a skipped blank line', () => {
+    const result = csvToJson('a,b\n\n1,2\n3', COMMA)
+    expect(result).toMatchObject({ ok: false, error: { line: 4 } })
+  })
+
+  it('keeps a __proto__ column as an own property', () => {
+    const output = okOutput(csvToJson('__proto__,b\n1,2', COMMA))
+    expect(output).toContain('"__proto__": "1"')
+    const parsed = JSON.parse(output) as Record<string, string>[]
+    expect(Object.keys(parsed[0] ?? {})).toEqual(['__proto__', 'b'])
+  })
+
   it('converts rows to objects using the header', () => {
     const output = okOutput(csvToJson('name,age\nAda,36\nLinus,54', COMMA))
     expect(JSON.parse(output)).toEqual([
@@ -138,6 +181,19 @@ describe('jsonToCsv', () => {
     const csv = jsonToCsv(json, COMMA)
     if (!csv.ok) throw new Error('csv failed')
     expect(JSON.parse(okOutput(csvToJson(csv.output, COMMA)))).toEqual(JSON.parse(json))
+  })
+
+  it('round-trips empty string values without losing records', () => {
+    const json = '[{"a":""},{"a":"x"}]'
+    const csv = jsonToCsv(json, COMMA)
+    expect(csv).toEqual({ ok: true, output: 'a\n""\nx' })
+    if (!csv.ok) throw new Error('csv failed')
+    expect(JSON.parse(okOutput(csvToJson(csv.output, COMMA)))).toEqual(JSON.parse(json))
+  })
+
+  it('writes empty rows and single empty cells distinctly', () => {
+    expect(jsonToCsv('[[],[1]]', COMMA)).toEqual({ ok: true, output: '\n1' })
+    expect(jsonToCsv('[[""],[1]]', COMMA)).toEqual({ ok: true, output: '""\n1' })
   })
 
   it('reports invalid JSON', () => {

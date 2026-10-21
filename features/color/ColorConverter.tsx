@@ -74,6 +74,7 @@ export function ColorConverter() {
   const [rgb, setRgb] = useState<Rgb>(INITIAL_RGB)
   const [drafts, setDrafts] = useState(() => draftsFor(INITIAL_RGB))
   const [errors, setErrors] = useState<Partial<Record<Format, string>>>({})
+  const [gamutMapped, setGamutMapped] = useState(false)
 
   const [backgroundText, setBackgroundText] = useState(INITIAL_BACKGROUND)
   const backgroundParsed = parseColor(backgroundText)
@@ -84,6 +85,7 @@ export function ColorConverter() {
       setRgb(parsed.rgb)
       setDrafts({ ...draftsFor(parsed.rgb), [format]: value })
       setErrors({})
+      setGamutMapped(parsed.gamutMapped)
     } else {
       setDrafts({ ...drafts, [format]: value })
       setErrors({ [format]: parsed.error })
@@ -96,6 +98,7 @@ export function ColorConverter() {
     setRgb(parsed.rgb)
     setDrafts(draftsFor(parsed.rgb))
     setErrors({})
+    setGamutMapped(false)
   }
 
   const nativeValue = formatHex(rgb)
@@ -162,6 +165,16 @@ export function ColorConverter() {
           })}
         </div>
       </div>
+
+      {gamutMapped && (
+        <p
+          data-testid="color-gamut-warning"
+          role="status"
+          className="text-muted-foreground -mt-4 mb-8 text-sm"
+        >
+          Out of sRGB gamut, mapped to the nearest displayable color by reducing chroma.
+        </p>
+      )}
 
       <section aria-labelledby="contrast-heading" className="border-border rounded-lg border p-4">
         <h2 id="contrast-heading" className="mb-1 text-base font-semibold">
