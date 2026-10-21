@@ -19,6 +19,9 @@ export const TOOL_ICONS = [
   'image',
   'link',
   'notebook-pen',
+  'text',
+  'table',
+  'palette',
 ] as const
 export type ToolIcon = (typeof TOOL_ICONS)[number]
 
@@ -65,6 +68,30 @@ export const TOOLS: readonly Tool[] = [
     name: 'Markdown viewer',
     description: 'Live markdown preview with syntax highlighting. Safe for untrusted content.',
     icon: 'file-text',
+    status: 'live',
+    category: 'Text & Code',
+  },
+  {
+    slug: 'generate/lorem',
+    name: 'Lorem ipsum generator',
+    description: 'Placeholder text as paragraphs, sentences, or words. Generated in your browser.',
+    icon: 'text',
+    status: 'live',
+    category: 'Generators',
+  },
+  {
+    slug: 'csv-json',
+    name: 'CSV ⇄ JSON converter',
+    description: 'Convert between CSV and JSON with delimiter choice and correct quoting.',
+    icon: 'table',
+    status: 'live',
+    category: 'Text & Code',
+  },
+  {
+    slug: 'color',
+    name: 'Color converter',
+    description: 'Convert HEX, RGB, HSL, and OKLCH and check WCAG AA/AAA contrast.',
+    icon: 'palette',
     status: 'live',
     category: 'Text & Code',
   },
