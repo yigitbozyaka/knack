@@ -96,6 +96,88 @@ test.describe("What's my IP", () => {
   })
 })
 
+test.describe('Base64 encoder', () => {
+  test('encodes UTF-8 text and decodes it back', async ({ page }) => {
+    await page.goto('/base64')
+    await page.getByLabel('Input', { exact: true }).fill('héllo ✓')
+    await expect(page.locator('[data-testid="base64-output"]')).toHaveText('aMOpbGxvIOKckw==')
+    await page.getByRole('button', { name: 'Decode' }).click()
+    await page.getByLabel('Input', { exact: true }).fill('aMOpbGxvIOKckw==')
+    await expect(page.locator('[data-testid="base64-output"]')).toHaveText('héllo ✓')
+  })
+
+  test('toggles base64url output', async ({ page }) => {
+    await page.goto('/base64')
+    await page.getByLabel('Input', { exact: true }).fill('>>>')
+    await expect(page.locator('[data-testid="base64-output"]')).toHaveText('Pj4+')
+    await page.getByTestId('base64-urlsafe').check()
+    await expect(page.locator('[data-testid="base64-output"]')).toHaveText('Pj4-')
+  })
+
+  test('shows an error for invalid base64', async ({ page }) => {
+    await page.goto('/base64')
+    await page.getByRole('button', { name: 'Decode' }).click()
+    await page.getByLabel('Input', { exact: true }).fill('not base64!')
+    await expect(page.getByTestId('base64-error')).toBeVisible()
+  })
+})
+
+test.describe('URL / HTML encoder', () => {
+  test('percent-encodes and decodes URL text', async ({ page }) => {
+    await page.goto('/url-encode')
+    await page.getByLabel('Input', { exact: true }).fill('a b&c')
+    await expect(page.locator('[data-testid="url-encode-output"]')).toHaveText('a%20b%26c')
+    await page.getByRole('button', { name: 'Decode' }).click()
+    await page.getByLabel('Input', { exact: true }).fill('a%20b%26c')
+    await expect(page.locator('[data-testid="url-encode-output"]')).toHaveText('a b&c')
+  })
+
+  test('escapes and unescapes HTML entities', async ({ page }) => {
+    await page.goto('/url-encode')
+    await page.getByRole('button', { name: 'HTML' }).click()
+    await page.getByLabel('Input', { exact: true }).fill('<b>&</b>')
+    await expect(page.locator('[data-testid="url-encode-output"]')).toHaveText(
+      '&lt;b&gt;&amp;&lt;/b&gt;',
+    )
+    await page.getByRole('button', { name: 'Decode' }).click()
+    await page.getByLabel('Input', { exact: true }).fill('&lt;i&gt;&#65;')
+    await expect(page.locator('[data-testid="url-encode-output"]')).toHaveText('<i>A')
+  })
+})
+
+test.describe('Hash generator', () => {
+  test('computes SHA digests for known input', async ({ page }) => {
+    await page.goto('/hash')
+    await page.getByLabel('Input', { exact: true }).fill('abc')
+    await expect(page.locator('[data-testid="hash-output-sha-1"]')).toHaveText(
+      'a9993e364706816aba3e25717850c26c9cd0d89d',
+    )
+    await expect(page.locator('[data-testid="hash-output-sha-256"]')).toHaveText(
+      'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+    )
+    await expect(page.locator('[data-testid="hash-output-sha-512"]')).toHaveText(/^ddaf35a1/)
+  })
+})
+
+test.describe('JWT decoder', () => {
+  const EXPIRED_TOKEN =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjN9.signature'
+
+  test('decodes a token and flags it as expired', async ({ page }) => {
+    await page.goto('/jwt')
+    await page.getByLabel('Token', { exact: true }).fill(EXPIRED_TOKEN)
+    await expect(page.getByTestId('jwt-expired-badge')).toBeVisible()
+    await expect(page.getByTestId('jwt-exp')).toHaveText('2018-01-18T01:30:23.000Z')
+    await expect(page.getByTestId('jwt-result')).toContainText('"name": "John Doe"')
+  })
+
+  test('shows an error for a malformed token', async ({ page }) => {
+    await page.goto('/jwt')
+    await page.getByLabel('Token', { exact: true }).fill('not-a-jwt')
+    await expect(page.getByTestId('jwt-error')).toBeVisible()
+  })
+})
+
 test.describe('Homepage', () => {
   test('shows live tools and category tabs', async ({ page }) => {
     await page.goto('/')
