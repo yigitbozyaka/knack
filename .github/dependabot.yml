@@ -39,6 +39,9 @@ updates:
       - dependency-name: react-dom
       - dependency-name: '@types/react'
       - dependency-name: '@types/react-dom'
+      - dependency-name: '@types/node'
+        update-types:
+          - version-update:semver-major
 
   # GitHub Actions — keep CI/security workflow actions current.
   - package-ecosystem: github-actions
