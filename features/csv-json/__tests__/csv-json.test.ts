@@ -196,6 +196,24 @@ describe('jsonToCsv', () => {
     expect(jsonToCsv('[[""],[1]]', COMMA)).toEqual({ ok: true, output: '""\n1' })
   })
 
+  it('round-trips all-empty tab rows', () => {
+    const tab = { delimiter: '\t', header: false }
+    const csv = jsonToCsv('[["",""]]', tab)
+    expect(csv).toEqual({ ok: true, output: '\t' })
+    if (!csv.ok) throw new Error('csv failed')
+    expect(JSON.parse(okOutput(csvToJson(csv.output, tab)))).toEqual([['', '']])
+  })
+
+  it('quotes cells that start with a BOM so they survive a round-trip', () => {
+    const noHeader = { delimiter: ',', header: false }
+    const arrays = jsonToCsv('[["\uFEFFx","y"]]', noHeader)
+    if (!arrays.ok) throw new Error('csv failed')
+    expect(JSON.parse(okOutput(csvToJson(arrays.output, noHeader)))).toEqual([['\uFEFFx', 'y']])
+    const objects = jsonToCsv('[{"k":"\uFEFFv"}]', noHeader)
+    if (!objects.ok) throw new Error('csv failed')
+    expect(JSON.parse(okOutput(csvToJson(objects.output, noHeader)))).toEqual([['\uFEFFv']])
+  })
+
   it('reports invalid JSON', () => {
     expect(jsonToCsv('{nope', COMMA).ok).toBe(false)
   })

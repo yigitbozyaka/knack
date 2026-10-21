@@ -124,7 +124,10 @@ export function parseCsvRows(input: string, delimiter: string): ParseRowsResult 
 }
 
 export function csvToJson(input: string, options: ConvertOptions): ConvertResult {
-  if (input.trim() === '') return fail('Paste some CSV to convert.')
+  const blankCharacters = options.delimiter === '\t' ? /[\r\n ]/g : /[\r\n\t ]/g
+  if (input.replace(/^\uFEFF/, '').replace(blankCharacters, '') === '') {
+    return fail('Paste some CSV to convert.')
+  }
 
   const parsed = parseCsvRows(input, options.delimiter)
   if (!parsed.ok) return parsed
@@ -175,6 +178,7 @@ function escapeCell(text: string, delimiter: string): string {
     text.includes('"') ||
     text.includes('\n') ||
     text.includes('\r') ||
+    text.startsWith('\uFEFF') ||
     text.startsWith(' ') ||
     text.endsWith(' ')
   return needsQuotes ? `"${text.replaceAll('"', '""')}"` : text

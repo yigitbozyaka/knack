@@ -43,36 +43,77 @@ function parseHex(input: string): ParseResult {
   }
 }
 
-function functionArgs(input: string, name: string): string[] | null {
+type Args = { ok: true; values: string[]; alpha: string | null } | { ok: false; error: string }
+
+function splitArguments(input: string, name: string, usage: string, legacy: boolean): Args {
   const match = new RegExp(String.raw`^${name}\(\s*([^)]*?)\s*\)$`, 'i').exec(input)
-  if (!match?.[1]) return null
-  const withoutAlpha = match[1].replace(/\s*\/.*$/, '')
-  return withoutAlpha.split(/\s*,\s*|\s+/).filter(Boolean)
+  const body = match?.[1]
+  if (!body) return { ok: false, error: usage }
+  const slashParts = body.split('/')
+  if (slashParts.length > 2) return { ok: false, error: usage }
+  if (slashParts.length === 2) {
+    const main = (slashParts[0] ?? '').trim()
+    const alpha = (slashParts[1] ?? '').trim()
+    if (main.includes(',') || alpha === '') return { ok: false, error: usage }
+    const values = main.split(/\s+/).filter(Boolean)
+    if (values.length !== 3) return { ok: false, error: usage }
+    return { ok: true, values, alpha }
+  }
+  if (body.includes(',')) {
+    if (!legacy) return { ok: false, error: usage }
+    const values = body.split(',').map((token) => token.trim())
+    if (values.some((token) => token === '') || (values.length !== 3 && values.length !== 4)) {
+      return { ok: false, error: usage }
+    }
+    return { ok: true, values: values.slice(0, 3), alpha: values[3] ?? null }
+  }
+  const values = body.split(/\s+/).filter(Boolean)
+  if (values.length !== 3) return { ok: false, error: usage }
+  return { ok: true, values, alpha: null }
 }
 
+const NUMBER_PATTERN = new RegExp(`^${NUMBER}(?:e[+-]?\\d+)?$`, 'i')
+
+const isNone = (token: string) => token.toLowerCase() === 'none'
+
 function toNumber(token: string, percentScale?: number): number | null {
+  if (isNone(token)) return 0
   const isPercent = token.endsWith('%')
   const raw = isPercent ? token.slice(0, -1) : token
-  if (!new RegExp(`^${NUMBER}$`).test(raw)) return null
-  const value = parseFloat(raw)
+  if (!NUMBER_PATTERN.test(raw)) return null
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return null
   return isPercent && percentScale !== undefined ? (value / 100) * percentScale : value
 }
 
 function toAngle(token: string): number | null {
+  if (isNone(token)) return 0
   const unit = /(deg|turn|grad|rad)$/i.exec(token)?.[1]?.toLowerCase()
   const raw = unit ? token.slice(0, -unit.length) : token
-  if (!new RegExp(`^${NUMBER}$`).test(raw)) return null
-  const value = parseFloat(raw)
+  if (!NUMBER_PATTERN.test(raw)) return null
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return null
   if (unit === 'turn') return value * 360
   if (unit === 'grad') return value * 0.9
   if (unit === 'rad') return (value * 180) / Math.PI
   return value
 }
 
+function isValidAlpha(token: string | null): boolean {
+  if (token === null || isNone(token)) return true
+  const isPercent = token.endsWith('%')
+  const value = toNumber(isPercent ? token.slice(0, -1) : token)
+  if (value === null) return false
+  return isPercent ? value >= 0 && value <= 100 : value >= 0 && value <= 1
+}
+
+const ALPHA_ERROR = 'Alpha must be a number between 0 and 1 or a percentage.'
+
 function parseRgbFunction(input: string): ParseResult {
-  const args = functionArgs(input, 'rgba?')
-  if (args?.length !== 3 && args?.length !== 4) return fail('Use rgb(255, 128, 0).')
-  const channels = args.slice(0, 3).map((token) => toNumber(token, 255))
+  const args = splitArguments(input, 'rgba?', 'Use rgb(255, 128, 0).', true)
+  if (!args.ok) return fail(args.error)
+  if (!isValidAlpha(args.alpha)) return fail(ALPHA_ERROR)
+  const channels = args.values.map((token) => toNumber(token, 255))
   if (channels.some((value) => value === null)) return fail('RGB channels must be numbers.')
   const [r = 0, g = 0, b = 0] = channels as number[]
   if ([r, g, b].some((value) => value < 0 || value > 255)) {
@@ -82,11 +123,12 @@ function parseRgbFunction(input: string): ParseResult {
 }
 
 function parseHslFunction(input: string): ParseResult {
-  const args = functionArgs(input, 'hsla?')
-  if (args?.length !== 3 && args?.length !== 4) return fail('Use hsl(210, 50%, 40%).')
-  const hue = toAngle(args[0] ?? '')
-  const saturation = toNumber(args[1] ?? '')
-  const lightness = toNumber(args[2] ?? '')
+  const args = splitArguments(input, 'hsla?', 'Use hsl(210, 50%, 40%).', true)
+  if (!args.ok) return fail(args.error)
+  if (!isValidAlpha(args.alpha)) return fail(ALPHA_ERROR)
+  const hue = toAngle(args.values[0] ?? '')
+  const saturation = toNumber(args.values[1] ?? '')
+  const lightness = toNumber(args.values[2] ?? '')
   if (hue === null || saturation === null || lightness === null) {
     return fail('HSL needs a hue and two percentages.')
   }
@@ -97,19 +139,20 @@ function parseHslFunction(input: string): ParseResult {
 }
 
 function parseOklchFunction(input: string): ParseResult {
-  const args = functionArgs(input, 'oklch')
-  if (args?.length !== 3) return fail('Use oklch(0.62 0.2 250).')
-  const component = (token: string | undefined, read: (token: string) => number | null) =>
-    token?.toLowerCase() === 'none' ? 0 : read(token ?? '')
-  const lightness = component(args[0], (token) => toNumber(token, 1))
-  const chroma = component(args[1], (token) => toNumber(token, 0.4))
-  const hue = component(args[2], toAngle)
+  const args = splitArguments(input, 'oklch', 'Use oklch(0.62 0.2 250).', false)
+  if (!args.ok) return fail(args.error)
+  if (!isValidAlpha(args.alpha)) return fail(ALPHA_ERROR)
+  const lightness = toNumber(args.values[0] ?? '', 1)
+  const chroma = toNumber(args.values[1] ?? '', 0.4)
+  const hue = toAngle(args.values[2] ?? '')
   if (lightness === null || chroma === null || hue === null) {
-    return fail('OKLCH needs lightness, chroma and hue.')
+    return fail('OKLCH needs lightness, chroma and hue as plain numbers.')
   }
-  if (lightness < 0 || lightness > 1)
+  if (lightness < 0 || lightness > 1) {
     return fail('OKLCH lightness must be between 0 and 1 (or 0–100%).')
+  }
   if (chroma < 0) return fail('OKLCH chroma cannot be negative.')
+  if (chroma > MAX_CHROMA) return fail(`OKLCH chroma must be at most ${String(MAX_CHROMA)}.`)
   const { rgb, gamutMapped } = mapOklchToRgb(lightness, chroma, hue)
   return { ok: true, rgb, gamutMapped }
 }
@@ -178,13 +221,14 @@ export function rgbToOklch({ r, g, b }: Rgb): { l: number; c: number; h: number 
   return { l: lightness, c: chroma, h: hue }
 }
 
-const GAMUT_EPSILON = 1e-6
+const MAX_CHROMA = 1
+const JUST_NOTICEABLE_DIFFERENCE = 0.02
+const CHROMA_EPSILON = 0.0001
+const IN_GAMUT_TOLERANCE = 1e-6
 
-function oklchToLinearRgb(
-  lightness: number,
-  chroma: number,
-  hue: number,
-): [number, number, number] {
+type Triple = [number, number, number]
+
+function oklchToLinearRgb(lightness: number, chroma: number, hue: number): Triple {
   const radians = (hue * Math.PI) / 180
   const a = chroma * Math.cos(radians)
   const b = chroma * Math.sin(radians)
@@ -198,31 +242,74 @@ function oklchToLinearRgb(
   ]
 }
 
-const isInGamut = (linear: [number, number, number]) =>
-  linear.every((value) => value >= -GAMUT_EPSILON && value <= 1 + GAMUT_EPSILON)
+function linearRgbToOklab([lr, lg, lb]: Triple): Triple {
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb)
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb)
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb)
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ]
+}
+
+const isInGamut = (linear: Triple) =>
+  linear.every((value) => value >= -IN_GAMUT_TOLERANCE && value <= 1 + IN_GAMUT_TOLERANCE)
+
+const clipLinear = (linear: Triple): Triple => [
+  clamp(linear[0], 0, 1),
+  clamp(linear[1], 0, 1),
+  clamp(linear[2], 0, 1),
+]
+
+function distanceOk(first: Triple, second: Triple): number {
+  return Math.hypot(first[0] - second[0], first[1] - second[1], first[2] - second[2])
+}
+
+function toRgb(linear: Triple): Rgb {
+  return { r: fromLinear(linear[0]), g: fromLinear(linear[1]), b: fromLinear(linear[2]) }
+}
 
 export function mapOklchToRgb(
   lightness: number,
   chroma: number,
   hue: number,
 ): { rgb: Rgb; gamutMapped: boolean } {
-  let linear = oklchToLinearRgb(lightness, chroma, hue)
-  let gamutMapped = false
-  if (!isInGamut(linear)) {
-    gamutMapped = true
-    let low = 0
-    let high = chroma
-    for (let step = 0; step < 24; step++) {
-      const middle = (low + high) / 2
-      if (isInGamut(oklchToLinearRgb(lightness, middle, hue))) low = middle
-      else high = middle
+  if (lightness >= 1) return { rgb: { r: 255, g: 255, b: 255 }, gamutMapped: false }
+  if (lightness <= 0) return { rgb: { r: 0, g: 0, b: 0 }, gamutMapped: false }
+
+  const original = oklchToLinearRgb(lightness, chroma, hue)
+  if (isInGamut(original)) return { rgb: toRgb(original), gamutMapped: false }
+
+  const originalOklab = linearRgbToOklab(original)
+  const clippedOriginal = clipLinear(original)
+  if (distanceOk(linearRgbToOklab(clippedOriginal), originalOklab) < JUST_NOTICEABLE_DIFFERENCE) {
+    return { rgb: toRgb(clippedOriginal), gamutMapped: false }
+  }
+
+  let low = 0
+  let high = chroma
+  let lowInGamut = true
+  let result = clippedOriginal
+  while (high - low > CHROMA_EPSILON) {
+    const middle = (low + high) / 2
+    const candidate = oklchToLinearRgb(lightness, middle, hue)
+    if (lowInGamut && isInGamut(candidate)) {
+      low = middle
+      continue
     }
-    linear = oklchToLinearRgb(lightness, low, hue)
+    const clipped = clipLinear(candidate)
+    const difference = distanceOk(linearRgbToOklab(clipped), linearRgbToOklab(candidate))
+    if (difference < JUST_NOTICEABLE_DIFFERENCE) {
+      result = clipped
+      if (JUST_NOTICEABLE_DIFFERENCE - difference < CHROMA_EPSILON) break
+      lowInGamut = false
+      low = middle
+    } else {
+      high = middle
+    }
   }
-  return {
-    rgb: { r: fromLinear(linear[0]), g: fromLinear(linear[1]), b: fromLinear(linear[2]) },
-    gamutMapped,
-  }
+  return { rgb: toRgb(result), gamutMapped: true }
 }
 
 export function oklchToRgb(lightness: number, chroma: number, hue: number): Rgb {

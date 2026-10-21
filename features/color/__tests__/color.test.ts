@@ -65,6 +65,61 @@ describe('parseColor', () => {
     expect(result.gamutMapped).toBe(false)
   })
 
+  it('round-trips its own oklch output without mapping', () => {
+    const primaries = ['#0000ff', '#ffff00', '#ff0000', '#00ff00', '#00ffff', '#ff00ff']
+    for (const hex of [...primaries, '#000000', '#ffffff']) {
+      const result = parseColor(formatOklch(rgbOf(hex)))
+      if (!result.ok) throw new Error(result.error)
+      expect(formatHex(result.rgb)).toBe(hex)
+      expect(result.gamutMapped).toBe(false)
+    }
+
+    let seed = 12345
+    for (let i = 0; i < 200; i++) {
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      const original = rgbOf(`#${(seed % 0x1000000).toString(16).padStart(6, '0')}`)
+      const result = parseColor(formatOklch(original))
+      if (!result.ok) throw new Error(result.error)
+      expect(result.gamutMapped).toBe(false)
+      expect(Math.abs(result.rgb.r - original.r)).toBeLessThan(1.5)
+      expect(Math.abs(result.rgb.g - original.g)).toBeLessThan(1.5)
+      expect(Math.abs(result.rgb.b - original.b)).toBeLessThan(1.5)
+    }
+  })
+
+  it('validates alpha and argument syntax', () => {
+    for (const good of [
+      'rgb(1 2 3 / 0.5)',
+      'rgb(1 2 3 / 50%)',
+      'rgba(1, 2, 3, 0.5)',
+      'hsla(10, 50%, 50%, 1)',
+      'rgb(none 2 3)',
+      'hsl(none 50% 50%)',
+      'oklch(0.5 0.1 0 / 0.2)',
+    ]) {
+      expect(parseColor(good).ok).toBe(true)
+    }
+    for (const bad of [
+      'oklch(0.5 0.1 0 / garbage)',
+      'rgba(1,2,3,x)',
+      'rgb(1 2 3 4)',
+      'rgb(1, 2, 3 / 0.5)',
+      'rgb(1 2 3 / 2)',
+      'rgb(1 2 3 / -0.1)',
+      'rgb(1, 2, 3, 150%)',
+      'oklch(0.5, 0.1, 0)',
+    ]) {
+      expect(parseColor(bad).ok).toBe(false)
+    }
+  })
+
+  it('gives specific messages for exponent and huge numbers', () => {
+    expect(parseColor('oklch(0.5 1e-1 0)').ok).toBe(true)
+    const huge = parseColor('oklch(0.9 1e3 0)')
+    expect(huge.ok).toBe(false)
+    if (!huge.ok) expect(huge.error).toMatch(/chroma must be at most/)
+  })
+
   it('rejects malformed input with a message', () => {
     for (const bad of [
       '',

@@ -41,7 +41,7 @@ export function LoremGenerator() {
 
   const editCount = (text: string) => {
     setCountText(text)
-    const parsed = parseInt(text, 10)
+    const parsed = text.trim() === '' ? Number.NaN : Number(text)
     if (Number.isNaN(parsed)) return
     const nextCount = clampCount(unit, parsed)
     setCount(nextCount)
