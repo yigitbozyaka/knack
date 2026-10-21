@@ -1,5 +1,7 @@
 import {
   BracesIcon,
+  CalendarClockIcon,
+  ClockIcon,
   FileTextIcon,
   FingerprintIcon,
   GlobeIcon,
@@ -24,6 +26,8 @@ const ICONS: Record<ToolIcon, LucideIcon> = {
   hash: HashIcon,
   shield: ShieldIcon,
   'list-ordered': ListOrderedIcon,
+  clock: ClockIcon,
+  'calendar-clock': CalendarClockIcon,
   'qr-code': QrCodeIcon,
   'key-round': KeyRoundIcon,
   'file-text': FileTextIcon,
