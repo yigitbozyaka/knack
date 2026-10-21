@@ -1,6 +1,17 @@
 packages:
   - .
 
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  esbuild: true
+  msw: false
+  sharp: false
+  unrs-resolver: false
+
+overrides:
+  undici: ^7.29.1
+  sharp: ^0.35.5
+  postcss: ^8.5.18
+  nanoid@3: ^3.3.17
+  browserslist: ^4.28.7
+  js-yaml@4: ^4.3.2
+  source-map-js: ^1.2.2
