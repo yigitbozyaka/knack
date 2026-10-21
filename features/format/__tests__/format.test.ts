@@ -97,6 +97,42 @@ describe('YAML', () => {
   it('validate: merge keys are accepted', () => {
     expect(yaml.validate('a: &x {b: 1}\nc:\n  <<: *x\n').ok).toBe(true)
   })
+
+  it('format: comment-only input yields empty output', () => {
+    expect(yaml.format('# only\n')).toEqual({ ok: true, output: '' })
+  })
+
+  it('validate: comment-only input is valid', () => {
+    expect(yaml.validate('# only\n').ok).toBe(true)
+  })
+
+  it('format: !!binary round-trips', () => {
+    const r = yaml.format('data: !!binary aGVsbG8=\n')
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.output).toContain('aGVsbG8=')
+  })
+
+  it('format: !!set round-trips', () => {
+    const r = yaml.format('s: !!set\n  ? a\n  ? b\n')
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.output).toContain('a')
+      expect(r.output).toContain('b')
+    }
+  })
+
+  it('format: !!omap round-trips', () => {
+    const r = yaml.format('o: !!omap\n  - a: 1\n  - b: 2\n')
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.output).toContain('a: 1')
+      expect(r.output).toContain('b: 2')
+    }
+  })
+
+  it('format: !!pairs round-trips', () => {
+    expect(yaml.format('p: !!pairs\n  - a: 1\n  - a: 2\n').ok).toBe(true)
+  })
 })
 
 describe('XML', () => {

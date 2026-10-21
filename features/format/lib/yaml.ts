@@ -1,8 +1,28 @@
-import { CORE_SCHEMA, YAMLException, dump, load, mergeTag } from 'js-yaml'
+import {
+  CORE_SCHEMA,
+  YAMLException,
+  binaryTag,
+  dump,
+  load,
+  loadAll,
+  mergeTag,
+  omapTag,
+  pairsTag,
+  setTag,
+} from 'js-yaml'
 
 import { type FormatResult } from './types'
 
-const schema = CORE_SCHEMA.withTags(mergeTag)
+const schema = CORE_SCHEMA.withTags(mergeTag, binaryTag, omapTag, pairsTag, setTag)
+
+const EMPTY_DOCUMENT = Symbol('empty-document')
+
+function parse(input: string): unknown {
+  const documents = loadAll(input, { schema })
+  if (documents.length === 0) return EMPTY_DOCUMENT
+  if (documents.length === 1) return documents[0]
+  return load(input, { schema })
+}
 
 function yamlError(err: unknown): FormatResult {
   if (err instanceof YAMLException) {
@@ -20,7 +40,8 @@ function yamlError(err: unknown): FormatResult {
 export function format(input: string): FormatResult {
   if (input.trim() === '') return { ok: true, output: '' }
   try {
-    const parsed = load(input, { schema })
+    const parsed = parse(input)
+    if (parsed === EMPTY_DOCUMENT) return { ok: true, output: '' }
     return { ok: true, output: dump(parsed, { indent: 2, lineWidth: -1 }) }
   } catch (err) {
     return yamlError(err)
@@ -30,7 +51,7 @@ export function format(input: string): FormatResult {
 export function validate(input: string): FormatResult {
   if (input.trim() === '') return { ok: true, output: '✓ Valid YAML' }
   try {
-    load(input, { schema })
+    parse(input)
     return { ok: true, output: '✓ Valid YAML' }
   } catch (err) {
     return yamlError(err)
