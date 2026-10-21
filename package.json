@@ -2,6 +2,10 @@
   "name": "knack",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "pnpm": ">=12"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -37,8 +41,10 @@
     "@node-rs/argon2": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cronstrue": "^3.36.0",
+    "diff": "^9.0.0",
     "drizzle-orm": "^0.45.2",
-    "fast-xml-parser": "^5.7.3",
+    "fast-xml-validator": "^1.4.2",
     "file-type": "^22.0.1",
     "highlight.js": "^11.11.1",
     "iron-session": "^8.0.4",
@@ -47,7 +53,7 @@
     "lucide-react": "^1.14.0",
     "marked": "^18.0.3",
     "nanoid": "^5.1.16",
-    "next": "16.2.12",
+    "next": "16.4.2",
     "next-themes": "^0.4.6",
     "postgres": "^3.4.9",
     "radix-ui": "^1.4.3",
@@ -60,36 +66,28 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
-    "@tailwindcss/postcss": "^4",
+    "@playwright/test": "^1.64.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.5",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.4.2",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import": "^2.32.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.3",
-    "prettier": "^3.8.3",
-    "prettier-plugin-tailwindcss": "^0.8.0",
-    "shadcn": "^4.7.0",
-    "tailwindcss": "^4",
-    "tsx": "^4.21.0",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "shadcn": "^4.22.1",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.2",
+    "typescript-eslint": "^8.72.0",
     "vitest": "^4.1.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "undici": "^7.29.0",
-      "sharp": "^0.35.0",
-      "postcss": "^8.5.18",
-      "nanoid@3": "^3.3.17"
-    }
   }
 }

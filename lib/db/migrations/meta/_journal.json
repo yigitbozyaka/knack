@@ -29,6 +29,13 @@
       "when": 1786364681311,
       "tag": "0003_certain_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786373202926,
+      "tag": "0004_fearless_epoch",
+      "breakpoints": true
     }
   ]
 }

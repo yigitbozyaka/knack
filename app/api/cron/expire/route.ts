@@ -5,7 +5,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { eq, lt } from 'drizzle-orm'
 
 import { db } from '@/lib/db/client'
-import { expirableObjects, rateLimits } from '@/lib/db/schema'
+import { expirableObjects, pastes, rateLimits } from '@/lib/db/schema'
 import { env } from '@/lib/env'
 import { RATE_LIMIT_RETENTION_MS } from '@/lib/rate-limit'
 import { deleteObject } from '@/lib/storage/upload'
@@ -37,9 +37,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   let processed = 0
   const errors: string[] = []
 
-  // Loop until either the batch is empty or we've drained everything available
-  // in this run. The cron runs frequently enough that we don't try to process
-  // unbounded backlogs in a single invocation.
   for (let pass = 0; pass < 10; pass++) {
     const due = await db
       .select()
@@ -54,10 +51,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         if (row.storageKey) {
           await deleteObject(row.storageKey)
         }
-        // Resource-row deletion (paste, note, short, upload) is wired in each
-        // tool's PR. For now the expirable_objects row is the source of truth
-        // and gets removed; tools that haven't migrated yet just leak their
-        // resource row, which is acceptable until those tools land.
+        if (row.kind === 'paste') {
+          await db.delete(pastes).where(eq(pastes.id, row.resourceId))
+        }
+        // other kinds (note, short, upload) wired in their own PRs
         await db.delete(expirableObjects).where(eq(expirableObjects.id, row.id))
         processed++
       } catch (error) {

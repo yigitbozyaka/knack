@@ -14,7 +14,7 @@ Be kind. Assume good faith. Disagree with ideas, not people. Maintainers reserve
 
 ## Setting up locally
 
-You'll need [Node.js 20+](https://nodejs.org), [pnpm 9+](https://pnpm.io), and [Docker](https://www.docker.com).
+You'll need [Node.js 20+](https://nodejs.org), [pnpm 12+](https://pnpm.io), and [Docker](https://www.docker.com).
 
 ```bash
 git clone https://github.com/yigitbozyaka/knack.git
@@ -139,7 +139,7 @@ Every new tool PR should be able to answer the questions in the threat model's [
 
 ## Tests
 
-Add tests for any logic that isn't trivially correct from reading. Pure utility functions go in `lib/tools/<slug>/` with a co-located `__tests__/` folder.
+Add tests for any logic that isn't trivially correct from reading. Pure tool logic goes in `features/<tool>/lib.ts` with a co-located `features/<tool>/__tests__/` folder.
 
 - **Unit tests:** Vitest. Cover happy path, at least one edge case, one invalid input. Run with `pnpm test`.
 - **E2E tests:** Playwright, in `tests/e2e/`. Reach for these when behavior crosses several components or requires a real browser. Run with `pnpm test:e2e` (requires a running dev or prod server — the config auto-starts `pnpm dev` locally if none is found).

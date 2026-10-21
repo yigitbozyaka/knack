@@ -18,9 +18,7 @@ export type CreateAccountState =
   | { status: 'error'; message: string }
 
 export type SignInState =
-  | { status: 'success' }
-  | { status: 'rate-limited' }
-  | { status: 'error'; message: string }
+  { status: 'success' } | { status: 'rate-limited' } | { status: 'error'; message: string }
 
 const tokenInputSchema = z
   .string({ error: 'Enter your account token.' })

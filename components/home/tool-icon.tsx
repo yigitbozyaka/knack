@@ -1,5 +1,7 @@
 import {
   BracesIcon,
+  CalendarClockIcon,
+  ClockIcon,
   FileTextIcon,
   FingerprintIcon,
   GlobeIcon,
@@ -10,8 +12,11 @@ import {
   ListOrderedIcon,
   type LucideIcon,
   NotebookPenIcon,
+  PaletteIcon,
   QrCodeIcon,
   ShieldIcon,
+  TableIcon,
+  TextIcon,
   UploadIcon,
 } from 'lucide-react'
 
@@ -24,6 +29,8 @@ const ICONS: Record<ToolIcon, LucideIcon> = {
   hash: HashIcon,
   shield: ShieldIcon,
   'list-ordered': ListOrderedIcon,
+  clock: ClockIcon,
+  'calendar-clock': CalendarClockIcon,
   'qr-code': QrCodeIcon,
   'key-round': KeyRoundIcon,
   'file-text': FileTextIcon,
@@ -31,6 +38,9 @@ const ICONS: Record<ToolIcon, LucideIcon> = {
   image: ImageIcon,
   link: LinkIcon,
   'notebook-pen': NotebookPenIcon,
+  text: TextIcon,
+  table: TableIcon,
+  palette: PaletteIcon,
 }
 
 export function ToolIconView({ name, className }: { name: ToolIcon; className?: string }) {

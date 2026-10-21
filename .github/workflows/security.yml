@@ -18,7 +18,6 @@ permissions:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '9'
 
 jobs:
   gitleaks:
@@ -26,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # gitleaks-action needs the parent commit of the first PR commit
           # to compute the diff range, so fetch full history in every event.
@@ -46,15 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'

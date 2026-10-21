@@ -34,21 +34,19 @@ export const metadata: Metadata = {
   },
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
-  // TODO(phase-3): generate /og.png via the OG image route. Until then this
-  // file does not exist; preview cards will fall back to no image.
   openGraph: {
     title: APP_NAME,
     description: APP_DESCRIPTION,
     url: env.NEXT_PUBLIC_APP_URL,
     siteName: APP_NAME,
     type: 'website',
-    images: ['/og.png'],
+    images: [{ url: '/icon-512.png', width: 512, height: 512, alt: APP_NAME }],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ['/og.png'],
+    images: ['/icon-512.png'],
   },
 }
 
