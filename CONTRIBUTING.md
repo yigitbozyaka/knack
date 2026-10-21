@@ -14,7 +14,7 @@ Be kind. Assume good faith. Disagree with ideas, not people. Maintainers reserve
 
 ## Setting up locally
 
-You'll need [Node.js 20+](https://nodejs.org), [pnpm 9+](https://pnpm.io), and [Docker](https://www.docker.com).
+You'll need [Node.js 20+](https://nodejs.org), [pnpm 10+](https://pnpm.io), and [Docker](https://www.docker.com).
 
 ```bash
 git clone https://github.com/yigitbozyaka/knack.git
