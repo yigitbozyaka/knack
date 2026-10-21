@@ -22,7 +22,7 @@ Knack ([knack.wtf](https://knack.wtf)) is an open-source, all-in-one web utiliti
 - Zod for all runtime validation
 - Vitest + Playwright for tests
 - Pino for structured logging
-- pnpm 10+ on Node 20+
+- pnpm 12+ on Node 20+
 
 ## Conventions (apply to everything you write)
 
