@@ -82,10 +82,12 @@ Examples:
 
 ```
 app/                    Next.js App Router routes, layouts, pages
-  (tools)/              Route group for utility tools (one folder per tool)
+  <slug>/page.tsx       One folder per tool (nested for verb groups, e.g. generate/uuid)
   actions/              Server Actions (e.g. report-abuse)
   api/                  Route handlers (only when an HTTP API is genuinely needed)
   layout.tsx            Root layout (theme provider, header, footer, fonts)
+features/
+  <tool>/               lib.ts, Component.tsx, __tests__/ per tool
 components/
   ui/                   shadcn primitives — do not edit directly, regenerate via shadcn CLI
   <feature>/            Feature-specific components (when reused across pages)
@@ -221,6 +223,24 @@ app/<slug>/
 
 Tools that group by verb use nested slugs: `generate/uuid`, `generate/password`, `generate/secret`.
 
+### Web Worker pattern (untrusted or expensive computation)
+
+Tools that run user-supplied patterns which can hang the main thread (the regex tester is the reference) execute them in a Web Worker with a timeout:
+
+```
+features/regex/
+  lib.ts              — pure `runRegex`, shared by the worker and unit tests
+  regex.worker.ts     — imports lib.ts, answers each request with a result, posts `{ ready: true }` once loaded
+  useRegexRunner.ts   — hook that owns the worker lifecycle
+  RegexTester.tsx     — consumes the hook
+```
+
+- The hook creates the worker lazily with `new Worker(new URL('./regex.worker.ts', import.meta.url))` and debounces input (`DEBOUNCE_MS`).
+- It waits for the `ready` message before dispatching, so the first request is never lost.
+- Each dispatch starts a timeout (`RUN_TIMEOUT_MS`). On expiry the worker is `terminate()`d and discarded, and the UI shows a timed-out state. The next run creates a fresh worker.
+- `worker.onerror` discards the worker and surfaces an engine-failed state. Unmount and superseded in-flight runs also terminate it.
+- Request and ready message types are exported from the worker file and imported as types by the hook; keep the logic itself in `lib.ts` so it stays unit-testable without a worker.
+
 ### Shared UI primitives
 
 - `<ToolShell>` — wraps with `max-w-4xl px-4 py-8`, breadcrumb, and `<ToolErrorBoundary>`.
@@ -255,15 +275,15 @@ Primary output elements get a `data-testid` so Playwright tests can find them re
 
 When you're asked to add a new utility tool to Knack, follow this:
 
-1. **Pick the slug.** Kebab-case, short, memorable. Example: `json-to-yaml`. The tool will live at `/<slug>` and on disk at `app/(tools)/<slug>/`.
+1. **Pick the slug.** Kebab-case, short, memorable. Example: `json-to-yaml`. The tool will live at `/<slug>` with its route at `app/<slug>/` and its code at `features/<tool>/`.
 2. **Open / find a tracking issue.** Discuss scope first if it's non-trivial.
 3. **Branch.** `feat/<slug>` from `dev`.
-4. **Scaffold the route.** Create `app/(tools)/<slug>/page.tsx`. Default to a Server Component shell that imports a client component for the interactive part if needed.
-5. **Pure logic in `lib/`.** The actual conversion / parsing / generation logic goes in `lib/tools/<slug>/` as pure, testable functions. Never put logic in the component.
+4. **Scaffold the route.** Create `app/<slug>/page.tsx` as a Server Component shell: metadata plus `<ToolShell><Component /></ToolShell>`. Verb-grouped tools use nested slugs (`app/generate/<slug>/page.tsx`).
+5. **Pure logic in `features/<tool>/lib.ts`.** The actual conversion / parsing / generation logic goes there as pure, testable functions. The interactive `'use client'` component lives beside it as `features/<tool>/<Component>.tsx`. Never put logic in the component.
 6. **Validate input with Zod.** Define schemas for any text input, file upload, or option set. Reject early; surface friendly errors.
 7. **UI from shadcn primitives.** `Card`, `Button`, `Input`, `Textarea`, `Tabs`, `Toggle`, etc. Match the visual rhythm of existing tools.
-8. **Tests.** A Vitest unit-test file next to the lib code (`lib/tools/<slug>/__tests__/<thing>.test.ts`) covering happy path + at least one edge case + one invalid input.
-9. **Register the tool.** Add it to `lib/tools/registry.ts` with `{ slug, name, description, icon, status, category }`. Default to `status: 'soon'` until the tool is shippable; flip to `'live'` in the same PR that lands the working route.
+8. **Tests.** A Vitest unit-test file in `features/<tool>/__tests__/` (e.g. `lib.test.ts`) covering happy path + at least one edge case + one invalid input.
+9. **Register the tool.** Add it to `lib/tools/registry.ts` with `{ slug, name, description, icon, status, category }`. The `icon` must be one of the keys in `TOOL_ICONS`; if you need a new one, add the key there and map it to a lucide icon in `components/home/tool-icon.tsx`. Default to `status: 'soon'` until the tool is shippable; flip to `'live'` in the same PR that lands the working route.
 10. **Wire expiry if it's persistent.** If your tool stores anything with a TTL (paste, note, upload, short link), insert into `expirable_objects` at create time — see the **Expirable resources** section above.
 11. **Metadata.** Page-level `<metadata>` export with title, description, OG image (auto-generated by the OG route in Phase 3).
 12. **Accessibility.** Labels for every input, focus order makes sense, errors announced to screen readers, keyboard usable end-to-end.

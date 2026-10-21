@@ -12,19 +12,33 @@ Self-host it, fork it, or contribute new tools. The goal is a community-owned ut
 
 ## Status
 
-✅ **Phase 3 — Client tools shipped.** Seven browser-only tools are live, with no account required:
+✅ **v1 — client tools shipped.** 19 tools are live. Everything except Paste and What's my IP? runs entirely in your browser, with no account required:
 
-| Tool               | URL                  | Notes                                      |
-| ------------------ | -------------------- | ------------------------------------------ |
-| UUID Generator     | `/generate/uuid`     | v4 and v7, RFC-compliant                   |
-| Password Generator | `/generate/password` | Strength meter, rejection sampling         |
-| Secret Generator   | `/generate/secret`   | Hex, Base64, Base64url, alphanumeric       |
-| Formatter          | `/format`            | JSON, YAML, XML — format, minify, validate |
-| Markdown Viewer    | `/markdown`          | DOMPurify-sanitized, syntax highlighting   |
-| Scratchpad         | `/notes`             | localStorage-backed, import/export         |
-| What's my IP?      | `/ip`                | Rate-limited, nothing stored               |
+| Tool                  | URL                  | Notes                                                                 |
+| --------------------- | -------------------- | --------------------------------------------------------------------- |
+| Secret Generator      | `/generate/secret`   | Cryptographic random strings for API keys, JWT secrets, tokens        |
+| UUID Generator        | `/generate/uuid`     | v4 and v7, RFC-compliant                                              |
+| Password Generator    | `/generate/password` | Adjustable length and character set, strength meter                   |
+| Lorem Ipsum Generator | `/generate/lorem`    | Paragraphs, sentences, or words                                       |
+| Formatter             | `/format`            | JSON, YAML, XML — format, minify, validate                            |
+| Markdown Viewer       | `/markdown`          | Live preview, DOMPurify-sanitized, syntax highlighting                |
+| CSV ⇄ JSON Converter  | `/csv-json`          | Delimiter choice, correct quoting                                     |
+| Color Converter       | `/color`             | HEX, RGB, HSL, OKLCH, plus WCAG AA/AAA contrast check                 |
+| Base64 Encoder        | `/base64`            | UTF-8 text to and from base64 or base64url                            |
+| URL / HTML Encoder    | `/url-encode`        | Percent-encode URL components or escape HTML entities, and decode     |
+| Hash Generator        | `/hash`              | SHA-1, SHA-256, SHA-384, SHA-512 via Web Crypto                       |
+| JWT Decoder           | `/jwt`               | Header, payload, and expiry. Decode only — never verified or sent     |
+| Text Diff             | `/diff`              | Line or word diff, unified or side by side                            |
+| Regex Tester          | `/regex`             | JavaScript regex, live highlighting, capture groups; runs in a Worker |
+| Timestamp Converter   | `/timestamp`         | Unix s/ms/µs/ns to ISO 8601, UTC, and local time                      |
+| Cron Parser           | `/cron`              | 5-field expressions in plain English, next-run preview                |
+| Scratchpad            | `/notes`             | localStorage-backed, import/export, no server                         |
+| Paste                 | `/paste`             | Server-backed text snippets with optional expiry                      |
+| What's my IP?         | `/ip`                | Rate-limited, nothing logged or stored                                |
 
-Database, auth, storage infrastructure from Phase 2 is in place for future server-side tools.
+Registered but not shipped yet (shown as "soon" on the homepage): QR generator (`/qr`), File drop (`/upload`), Image converter (`/image-convert`), URL shortener (`/short`), Burn-after-reading note (`/note`).
+
+Database, auth, and storage infrastructure is in place for the server-side tools.
 
 ## Architecture
 
@@ -38,14 +52,13 @@ A few load-bearing decisions worth knowing before you contribute:
 
 ## Features
 
-Coming online incrementally. The roadmap focuses on:
+The 19 tools above are shipped. The roadmap continues with:
 
-- **Text & data** — JSON / YAML / TOML / CSV converters, base64, URL/HTML encoders, hash generators, JWT decoder, regex tester, diff viewer
 - **Images** — convert, compress, resize, strip EXIF, generate favicons, OG images
 - **PDF** — merge, split, compress, extract text, redact
-- **Network** — DNS / WHOIS lookup, IP info, header inspector, JWT to JSON
-- **Generators** — UUID, password, lorem ipsum, fake data, color palettes
-- **Dev** — cron parser, regex builder, timestamp converter, color picker, gradient builder
+- **Network** — DNS / WHOIS lookup, header inspector, URL shortener
+- **Storage** — file drop, burn-after-reading notes
+- **Generators** — QR codes, fake data, color palettes
 
 The full roadmap lives in [GitHub Issues](https://github.com/yigitbozyaka/knack/issues).
 
