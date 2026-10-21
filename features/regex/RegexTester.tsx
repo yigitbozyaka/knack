@@ -27,7 +27,7 @@ export function RegexTester() {
   const [flags, setFlags] = useState('g')
   const [text, setText] = useState('mail ada@example.com or bob@knack.com today')
 
-  const { result, timedOut } = useRegexRunner(pattern, flags, text)
+  const { result, timedOut, engineFailed } = useRegexRunner(pattern, flags, text)
 
   return (
     <>
@@ -62,6 +62,11 @@ export function RegexTester() {
         {result !== null && !result.ok && (
           <p className="text-destructive text-xs" role="alert" data-testid="regex-error">
             {result.error}
+          </p>
+        )}
+        {engineFailed && (
+          <p className="text-destructive text-xs" role="alert" data-testid="regex-engine-error">
+            Regex engine failed to load
           </p>
         )}
         {timedOut && (
@@ -115,7 +120,9 @@ export function RegexTester() {
             ? `${String(result.matches.length)}${result.truncated ? '+' : ''} ${
                 result.matches.length === 1 && !result.truncated ? 'match' : 'matches'
               }`
-            : '0 matches'}
+            : result === null && !timedOut && !engineFailed
+              ? ''
+              : '0 matches'}
         </span>
       </div>
       <pre

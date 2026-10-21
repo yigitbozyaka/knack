@@ -67,7 +67,7 @@ test.describe('Text diff', () => {
     await expect(page.locator('[data-testid="diff-row"][data-kind="remove"]')).toHaveCount(1)
   })
 
-  test('flags a trailing newline and differing line endings', async ({ page }) => {
+  test('flags a trailing newline difference', async ({ page }) => {
     await page.goto('/diff')
     await page.getByLabel('Original').fill('one\ntwo')
     await page.getByLabel('Modified').fill('one\ntwo\n')

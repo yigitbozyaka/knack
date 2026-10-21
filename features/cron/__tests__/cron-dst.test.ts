@@ -28,6 +28,22 @@ describe('daylight saving time in the local view', () => {
     ])
   })
 
+  it('runs a job skipped at the last minute of the gap', () => {
+    expect(localRuns('59 2 * * *', '2026-03-07T15:00:00Z', 2)).toEqual([
+      '2026-03-08T07:00:00.000Z',
+      '2026-03-09T06:59:00.000Z',
+    ])
+  })
+
+  it('lists each fixed time once in a repeated hour with several minutes', () => {
+    expect(localRuns('0,30 1 * * *', '2026-10-31T12:00:00Z', 4)).toEqual([
+      '2026-11-01T05:00:00.000Z',
+      '2026-11-01T05:30:00.000Z',
+      '2026-11-02T06:00:00.000Z',
+      '2026-11-02T06:30:00.000Z',
+    ])
+  })
+
   it('lists a fixed-time job once on the fall-back day', () => {
     expect(localRuns('30 1 * * *', '2026-10-31T12:00:00Z', 3)).toEqual([
       '2026-11-01T05:30:00.000Z',

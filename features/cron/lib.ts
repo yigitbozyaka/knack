@@ -239,7 +239,7 @@ function skippedByForwardTransition(schedule: CronSchedule, cursor: Date): boole
   const gapMinutes = before.getTimezoneOffset() - cursor.getTimezoneOffset()
   if (gapMinutes <= 0) return false
   const start = readClock(before, 'local')
-  for (let offset = 1; offset < gapMinutes; offset++) {
+  for (let offset = 1; offset <= gapMinutes; offset++) {
     const wall = new Date(
       Date.UTC(start.year, start.month, start.day, start.hour, start.minute + offset),
     )
@@ -283,12 +283,10 @@ export function nextRuns(
     } else if (!schedule.minutes.has(clock.minute)) {
       next = new Date(cursor.getTime() + 60000)
     } else {
-      const previous = runs[runs.length - 1]
       const repeatedWallTime =
         zone === 'local' &&
         schedule.fixedTime &&
-        previous !== undefined &&
-        sameWallMinute(readClock(previous, 'local'), clock)
+        runs.some((run) => sameWallMinute(readClock(run, 'local'), clock))
       if (!repeatedWallTime) runs.push(cursor)
       next = new Date(cursor.getTime() + 60000)
     }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { type RegexResult } from './lib'
-import { type RegexRequest } from './regex.worker'
+import { type RegexRequest, type WorkerReady } from './regex.worker'
 
 export const DEBOUNCE_MS = 150
 export const RUN_TIMEOUT_MS = 1500
@@ -9,57 +9,87 @@ export const RUN_TIMEOUT_MS = 1500
 interface RunnerState {
   result: RegexResult | null
   timedOut: boolean
+  engineFailed: boolean
 }
 
-function createWorker(): Worker {
-  return new Worker(new URL('./regex.worker.ts', import.meta.url))
+interface WorkerHandle {
+  worker: Worker
+  ready: boolean
+}
+
+function isReady(data: RegexResult | WorkerReady): data is WorkerReady {
+  return 'ready' in data
+}
+
+function createHandle(): WorkerHandle {
+  return { worker: new Worker(new URL('./regex.worker.ts', import.meta.url)), ready: false }
 }
 
 export function useRegexRunner(pattern: string, flags: string, text: string): RunnerState {
-  const [state, setState] = useState<RunnerState>({ result: null, timedOut: false })
-  const workerRef = useRef<Worker | null>(null)
+  const [state, setState] = useState<RunnerState>({
+    result: null,
+    timedOut: false,
+    engineFailed: false,
+  })
+  const handleRef = useRef<WorkerHandle | null>(null)
 
   useEffect(
     () => () => {
-      workerRef.current?.terminate()
-      workerRef.current = null
+      handleRef.current?.worker.terminate()
+      handleRef.current = null
     },
     [],
   )
 
   useEffect(() => {
-    let inFlight = false
     let timeout: ReturnType<typeof setTimeout> | undefined
+    let inFlight = false
+
+    const discardWorker = () => {
+      handleRef.current?.worker.terminate()
+      handleRef.current = null
+    }
 
     const debounce = setTimeout(() => {
-      const worker = workerRef.current ?? createWorker()
-      workerRef.current = worker
-      inFlight = true
+      const handle = handleRef.current ?? createHandle()
+      handleRef.current = handle
+      const request: RegexRequest = { pattern, flags, text }
 
-      timeout = setTimeout(() => {
-        inFlight = false
-        worker.terminate()
-        workerRef.current = null
-        setState({ result: null, timedOut: true })
-      }, RUN_TIMEOUT_MS)
-
-      worker.onmessage = (event: MessageEvent<RegexResult>) => {
-        inFlight = false
-        clearTimeout(timeout)
-        setState({ result: event.data, timedOut: false })
+      const dispatch = () => {
+        inFlight = true
+        timeout = setTimeout(() => {
+          inFlight = false
+          discardWorker()
+          setState({ result: null, timedOut: true, engineFailed: false })
+        }, RUN_TIMEOUT_MS)
+        handle.worker.postMessage(request)
       }
 
-      const request: RegexRequest = { pattern, flags, text }
-      worker.postMessage(request)
+      handle.worker.onerror = () => {
+        inFlight = false
+        clearTimeout(timeout)
+        discardWorker()
+        setState({ result: null, timedOut: false, engineFailed: true })
+      }
+
+      handle.worker.onmessage = (event: MessageEvent<RegexResult | WorkerReady>) => {
+        if (isReady(event.data)) {
+          handle.ready = true
+          dispatch()
+          return
+        }
+        inFlight = false
+        clearTimeout(timeout)
+        setState({ result: event.data, timedOut: false, engineFailed: false })
+      }
+
+      if (handle.ready) dispatch()
     }, DEBOUNCE_MS)
 
     return () => {
       clearTimeout(debounce)
       clearTimeout(timeout)
-      if (inFlight) {
-        workerRef.current?.terminate()
-        workerRef.current = null
-      }
+      if (inFlight) discardWorker()
     }
   }, [pattern, flags, text])
 
