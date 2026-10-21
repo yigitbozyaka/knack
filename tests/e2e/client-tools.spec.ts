@@ -210,3 +210,103 @@ test.describe('Homepage', () => {
     await expect(page.getByRole('link', { name: /password generator/i })).not.toBeVisible()
   })
 })
+
+test.describe('Lorem ipsum generator', () => {
+  test('starts with Lorem ipsum by default and honours the toggle', async ({ page }) => {
+    await page.goto('/generate/lorem')
+    const output = page.locator('[data-testid="lorem-output"]')
+    await expect(output).toHaveText(/^Lorem ipsum dolor sit amet, consectetur adipiscing elit/)
+    await page.getByLabel(/start with/i).click()
+    await page.getByRole('button', { name: 'Words' }).click()
+    await page.getByLabel(/count/i).fill('12')
+    const text = (await output.textContent()) ?? ''
+    expect(text.trim().split(/\s+/)).toHaveLength(12)
+  })
+
+  test('generates the requested number of paragraphs', async ({ page }) => {
+    await page.goto('/generate/lorem')
+    await page.getByLabel(/count/i).fill('5')
+    const text = (await page.locator('[data-testid="lorem-output"]').textContent()) ?? ''
+    expect(text.split('\n\n')).toHaveLength(5)
+  })
+
+  test('has a copy button', async ({ page }) => {
+    await page.goto('/generate/lorem')
+    await expect(page.getByRole('button', { name: /copy text/i })).toBeVisible()
+  })
+})
+
+test.describe('CSV and JSON converter', () => {
+  test('converts CSV with quoting to JSON', async ({ page }) => {
+    await page.goto('/csv-json')
+    await page.getByTestId('csv-input').fill('name,note\nAda,"likes, commas"\nLinus,"say ""hi"""')
+    const output = await page.getByTestId('csv-output').textContent()
+    expect(JSON.parse(output?.replace(/^JSON/i, '') ?? '')).toEqual([
+      { name: 'Ada', note: 'likes, commas' },
+      { name: 'Linus', note: 'say "hi"' },
+    ])
+  })
+
+  test('converts JSON to CSV with the chosen delimiter', async ({ page }) => {
+    await page.goto('/csv-json')
+    await page.getByRole('button', { name: 'JSON → CSV' }).click()
+    await page.getByTestId('csv-delimiter').selectOption('semicolon')
+    await page.getByTestId('csv-input').fill('[{"a":"x;y","b":2}]')
+    await expect(page.getByTestId('csv-output')).toContainText('a;b')
+    await expect(page.getByTestId('csv-output')).toContainText('"x;y";2')
+  })
+
+  test('drops the header row when the toggle is off', async ({ page }) => {
+    await page.goto('/csv-json')
+    await page.getByLabel('First row is a header').click()
+    await page.getByTestId('csv-input').fill('a,b\n1,2')
+    await expect(page.getByTestId('csv-output')).toContainText('"a"')
+    await expect(page.getByTestId('csv-output')).not.toContainText('"b": "2"')
+  })
+
+  test('shows an inline error for an unterminated quote', async ({ page }) => {
+    await page.goto('/csv-json')
+    await page.getByTestId('csv-input').fill('a,b\n1,"oops')
+    await expect(page.getByTestId('csv-error')).toContainText('Unterminated quoted field')
+  })
+
+  test('shows an inline error for invalid JSON', async ({ page }) => {
+    await page.goto('/csv-json')
+    await page.getByRole('button', { name: 'JSON → CSV' }).click()
+    await page.getByTestId('csv-input').fill('{nope')
+    await expect(page.getByTestId('csv-error')).toBeVisible()
+  })
+})
+
+test.describe('Color converter', () => {
+  test('converts a hex value into every notation', async ({ page }) => {
+    await page.goto('/color')
+    await page.getByTestId('color-hex').fill('#ff0000')
+    await expect(page.getByTestId('color-rgb')).toHaveValue('rgb(255, 0, 0)')
+    await expect(page.getByTestId('color-hsl')).toHaveValue('hsl(0, 100%, 50%)')
+    await expect(page.getByTestId('color-oklch')).toHaveValue('oklch(0.628 0.2577 29.23)')
+    await expect(page.getByTestId('color-native')).toHaveValue('#ff0000')
+  })
+
+  test('accepts input in any field and shows inline errors', async ({ page }) => {
+    await page.goto('/color')
+    await page.getByTestId('color-rgb').fill('rgb(0, 128, 0)')
+    await expect(page.getByTestId('color-hex')).toHaveValue('#008000')
+    await page.getByTestId('color-hsl').fill('hsl(0, 200%, 50%)')
+    await expect(page.getByTestId('color-hsl-error')).toBeVisible()
+  })
+
+  test('reports WCAG contrast and badges', async ({ page }) => {
+    await page.goto('/color')
+    await page.getByTestId('color-hex').fill('#000000')
+    await page.getByTestId('contrast-background').fill('#ffffff')
+    await expect(page.getByTestId('contrast-ratio')).toHaveText('21.00:1')
+    for (const id of ['aa-normal', 'aa-large', 'aaa-normal', 'aaa-large']) {
+      await expect(page.getByTestId(`contrast-${id}`)).toHaveAttribute('data-pass', 'true')
+    }
+    await page.getByTestId('color-hex').fill('#777777')
+    await expect(page.getByTestId('contrast-aa-normal')).toHaveAttribute('data-pass', 'false')
+    await expect(page.getByTestId('contrast-aa-large')).toHaveAttribute('data-pass', 'true')
+    await expect(page.getByTestId('contrast-aaa-normal')).toHaveAttribute('data-pass', 'false')
+  })
+})

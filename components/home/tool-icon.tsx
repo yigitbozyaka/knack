@@ -10,8 +10,11 @@ import {
   ListOrderedIcon,
   type LucideIcon,
   NotebookPenIcon,
+  PaletteIcon,
   QrCodeIcon,
   ShieldIcon,
+  TableIcon,
+  TextIcon,
   UploadIcon,
 } from 'lucide-react'
 
@@ -31,6 +34,9 @@ const ICONS: Record<ToolIcon, LucideIcon> = {
   image: ImageIcon,
   link: LinkIcon,
   'notebook-pen': NotebookPenIcon,
+  text: TextIcon,
+  table: TableIcon,
+  palette: PaletteIcon,
 }
 
 export function ToolIconView({ name, className }: { name: ToolIcon; className?: string }) {
