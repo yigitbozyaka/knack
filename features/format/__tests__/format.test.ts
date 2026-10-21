@@ -13,6 +13,7 @@ const INVALID_YAML = 'key: [\nbad'
 
 const VALID_XML = '<root><item>hello</item></root>'
 const INVALID_XML = '<root><item>unclosed</root>'
+const MULTILINE_INVALID_XML = '<root>\n  <item>one</item>\n  <item>two</wrong>\n</root>'
 
 describe('JSON', () => {
   it('format: pretty-prints valid JSON', () => {
@@ -92,6 +93,26 @@ describe('XML', () => {
 
   it('validate: error for invalid XML', () => {
     expect(xml.validate(INVALID_XML).ok).toBe(false)
+  })
+
+  it('format: reports exact line, col and closing tag for multi-line invalid XML', () => {
+    const r = xml.format(MULTILINE_INVALID_XML)
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error.line).toBe(3)
+      expect(r.error.col).toBe(12)
+      expect(r.error.message).toContain("closing tag 'wrong'")
+    }
+  })
+
+  it('validate: reports exact line, col and closing tag for multi-line invalid XML', () => {
+    const r = xml.validate(MULTILINE_INVALID_XML)
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error.line).toBe(3)
+      expect(r.error.col).toBe(12)
+      expect(r.error.message).toContain("closing tag 'wrong'")
+    }
   })
 })
 
