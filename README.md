@@ -75,7 +75,7 @@ The full roadmap lives in [GitHub Issues](https://github.com/yigitbozyaka/knack/
 
 ## Quickstart
 
-You'll need [Node.js 20+](https://nodejs.org), [pnpm 12+](https://pnpm.io), and [Docker](https://www.docker.com).
+You'll need [Node.js 24+](https://nodejs.org), [pnpm 12+](https://pnpm.io), and [Docker](https://www.docker.com).
 
 ```bash
 # 1. Clone and install
