@@ -1,7 +1,7 @@
 import { diffLines, diffWords } from 'diff'
 
 export const MAX_INPUT_LENGTH = 200_000
-export const DIFF_TIMEOUT_MS = 3000
+export const DIFF_TIMEOUT_MS = 500
 
 export type DiffMode = 'line' | 'word'
 export type SegmentKind = 'equal' | 'add' | 'remove'
@@ -37,7 +37,14 @@ export interface DiffStats {
 }
 
 export type DiffResult =
-  | { ok: true; mode: DiffMode; unified: UnifiedRow[]; split: SplitRow[]; stats: DiffStats }
+  | {
+      ok: true
+      mode: DiffMode
+      unified: UnifiedRow[]
+      split: SplitRow[]
+      stats: DiffStats
+      notes: string[]
+    }
   | { ok: false; error: string }
 
 interface Block {
@@ -51,8 +58,17 @@ function splitLines(value: string): string[] {
   return lines
 }
 
-function toBlocks(oldText: string, newText: string): Block[] | undefined {
-  const changes = diffLines(oldText, newText, { timeout: DIFF_TIMEOUT_MS })
+interface Budget {
+  remaining(): number
+}
+
+function createBudget(): Budget {
+  const deadline = Date.now() + DIFF_TIMEOUT_MS
+  return { remaining: () => deadline - Date.now() }
+}
+
+function toBlocks(oldText: string, newText: string, budget: Budget): Block[] | undefined {
+  const changes = diffLines(oldText, newText, { timeout: Math.max(1, budget.remaining()) })
   if (changes === undefined) return undefined
   return changes.map((change) => ({
     kind: change.added ? 'add' : change.removed ? 'remove' : 'equal',
@@ -60,8 +76,13 @@ function toBlocks(oldText: string, newText: string): Block[] | undefined {
   }))
 }
 
-function inlineSegments(oldLine: string, newLine: string): [Segment[], Segment[]] | undefined {
-  const changes = diffWords(oldLine, newLine, { timeout: DIFF_TIMEOUT_MS })
+function inlineSegments(
+  oldLine: string,
+  newLine: string,
+  budget: Budget,
+): [Segment[], Segment[]] | undefined {
+  if (budget.remaining() <= 0) return undefined
+  const changes = diffWords(oldLine, newLine, { timeout: budget.remaining() })
   if (changes === undefined) return undefined
   const left: Segment[] = []
   const right: Segment[] = []
@@ -84,8 +105,8 @@ function withTrailingNewline(text: string): string {
   return text === '' || text.endsWith('\n') ? text : `${text}\n`
 }
 
-function diffByLine(oldText: string, newText: string): DiffResult {
-  const blocks = toBlocks(withTrailingNewline(oldText), withTrailingNewline(newText))
+function diffByLine(oldText: string, newText: string, budget: Budget): DiffResult {
+  const blocks = toBlocks(withTrailingNewline(oldText), withTrailingNewline(newText), budget)
   if (blocks === undefined) return { ok: false, error: 'The inputs are too different to diff.' }
 
   const unified: UnifiedRow[] = []
@@ -126,7 +147,7 @@ function diffByLine(oldText: string, newText: string): DiffResult {
     const leftSegments: Segment[][] = removedLines.map((line) => plain(line, 'remove'))
     const rightSegments: Segment[][] = addedLines.map((line) => plain(line, 'add'))
     for (let p = 0; p < paired; p++) {
-      const inline = inlineSegments(removedLines[p] ?? '', addedLines[p] ?? '')
+      const inline = inlineSegments(removedLines[p] ?? '', addedLines[p] ?? '', budget)
       if (inline) {
         leftSegments[p] = inline[0]
         rightSegments[p] = inline[1]
@@ -170,11 +191,11 @@ function diffByLine(oldText: string, newText: string): DiffResult {
     stats.added += addedLines.length
   }
 
-  return { ok: true, mode: 'line', unified, split, stats }
+  return { ok: true, mode: 'line', unified, split, stats, notes: [] }
 }
 
-function diffByWord(oldText: string, newText: string): DiffResult {
-  const changes = diffWords(oldText, newText, { timeout: DIFF_TIMEOUT_MS })
+function diffByWord(oldText: string, newText: string, budget: Budget): DiffResult {
+  const changes = diffWords(oldText, newText, { timeout: Math.max(1, budget.remaining()) })
   if (changes === undefined) return { ok: false, error: 'The inputs are too different to diff.' }
 
   const merged: Segment[] = []
@@ -211,7 +232,39 @@ function diffByWord(oldText: string, newText: string): DiffResult {
       },
     ],
     stats,
+    notes: [],
   }
+}
+
+type LineEndingStyle = 'none' | 'lf' | 'crlf' | 'mixed'
+
+function lineEndingStyle(text: string): LineEndingStyle {
+  const crlf = text.includes('\r\n')
+  const lf = /(^|[^\r])\n/.test(text)
+  if (crlf && lf) return 'mixed'
+  if (crlf) return 'crlf'
+  return lf ? 'lf' : 'none'
+}
+
+function describeNotes(oldText: string, newText: string, mode: DiffMode): string[] {
+  const notes: string[] = []
+  const oldStyle = lineEndingStyle(oldText)
+  const newStyle = lineEndingStyle(newText)
+  if (oldStyle !== 'none' && newStyle !== 'none' && oldStyle !== newStyle) {
+    notes.push(
+      `Line endings differ (original: ${oldStyle.toUpperCase()}, modified: ${newStyle.toUpperCase()}); they are treated as equal.`,
+    )
+  }
+  if (mode === 'line' && oldText !== '' && newText !== '') {
+    const oldEnds = oldText.endsWith('\n')
+    const newEnds = newText.endsWith('\n')
+    if (oldEnds !== newEnds) {
+      notes.push(
+        `\\ No newline at end of file (${oldEnds ? 'modified' : 'original'}); a missing final newline is not counted as a change.`,
+      )
+    }
+  }
+  return notes
 }
 
 export function computeDiff(oldText: string, newText: string, mode: DiffMode): DiffResult {
@@ -223,7 +276,10 @@ export function computeDiff(oldText: string, newText: string, mode: DiffMode): D
   }
   const normalizedOld = oldText.replace(/\r\n/g, '\n')
   const normalizedNew = newText.replace(/\r\n/g, '\n')
-  return mode === 'line'
-    ? diffByLine(normalizedOld, normalizedNew)
-    : diffByWord(normalizedOld, normalizedNew)
+  const budget = createBudget()
+  const result =
+    mode === 'line'
+      ? diffByLine(normalizedOld, normalizedNew, budget)
+      : diffByWord(normalizedOld, normalizedNew, budget)
+  return result.ok ? { ...result, notes: describeNotes(oldText, newText, mode) } : result
 }

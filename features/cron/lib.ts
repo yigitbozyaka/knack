@@ -16,6 +16,7 @@ export interface CronSchedule {
   daysOfWeek: Set<number>
   dayOfMonthRestricted: boolean
   dayOfWeekRestricted: boolean
+  fixedTime: boolean
 }
 
 export type CronParseResult = { ok: true; schedule: CronSchedule } | { ok: false; error: string }
@@ -157,6 +158,7 @@ export function parseCron(expression: string): CronParseResult {
         daysOfWeek,
         dayOfMonthRestricted: !(tokens[2] ?? '').startsWith('*'),
         dayOfWeekRestricted: !(tokens[4] ?? '').startsWith('*'),
+        fixedTime: !(tokens[0] ?? '').startsWith('*') && !(tokens[1] ?? '').startsWith('*'),
       },
     }
   } catch (err) {
@@ -213,6 +215,39 @@ function dayMatches(schedule: CronSchedule, clock: WallClock): boolean {
   return monthDay && weekDay
 }
 
+function sameWallMinute(a: WallClock, b: WallClock): boolean {
+  return (
+    a.year === b.year &&
+    a.month === b.month &&
+    a.day === b.day &&
+    a.hour === b.hour &&
+    a.minute === b.minute
+  )
+}
+
+function clockMatches(schedule: CronSchedule, clock: WallClock): boolean {
+  return (
+    schedule.months.has(clock.month + 1) &&
+    dayMatches(schedule, clock) &&
+    schedule.hours.has(clock.hour) &&
+    schedule.minutes.has(clock.minute)
+  )
+}
+
+function skippedByForwardTransition(schedule: CronSchedule, cursor: Date): boolean {
+  const before = new Date(cursor.getTime() - 60000)
+  const gapMinutes = before.getTimezoneOffset() - cursor.getTimezoneOffset()
+  if (gapMinutes <= 0) return false
+  const start = readClock(before, 'local')
+  for (let offset = 1; offset < gapMinutes; offset++) {
+    const wall = new Date(
+      Date.UTC(start.year, start.month, start.day, start.hour, start.minute + offset),
+    )
+    if (clockMatches(schedule, readClock(wall, 'utc'))) return true
+  }
+  return false
+}
+
 export function nextRuns(
   schedule: CronSchedule,
   from: Date,
@@ -228,6 +263,17 @@ export function nextRuns(
     const clock = readClock(cursor, zone)
     let next: Date
 
+    if (
+      zone === 'local' &&
+      schedule.fixedTime &&
+      !clockMatches(schedule, clock) &&
+      skippedByForwardTransition(schedule, cursor)
+    ) {
+      runs.push(cursor)
+      cursor = new Date(cursor.getTime() + 60000)
+      continue
+    }
+
     if (!schedule.months.has(clock.month + 1)) {
       next = buildDate(zone, clock.year, clock.month + 1, 1, 0, 0)
     } else if (!dayMatches(schedule, clock)) {
@@ -237,7 +283,13 @@ export function nextRuns(
     } else if (!schedule.minutes.has(clock.minute)) {
       next = new Date(cursor.getTime() + 60000)
     } else {
-      runs.push(cursor)
+      const previous = runs[runs.length - 1]
+      const repeatedWallTime =
+        zone === 'local' &&
+        schedule.fixedTime &&
+        previous !== undefined &&
+        sameWallMinute(readClock(previous, 'local'), clock)
+      if (!repeatedWallTime) runs.push(cursor)
       next = new Date(cursor.getTime() + 60000)
     }
 

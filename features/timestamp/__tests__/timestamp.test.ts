@@ -4,7 +4,7 @@ import { formatLocal, formatRelative, parseTimestamp } from '../lib'
 
 const NOW = new Date('2026-10-21T08:00:00.000Z')
 
-function value(input: string, unit: 'auto' | 's' | 'ms' = 'auto', timeZone = 'UTC') {
+function value(input: string, unit: 'auto' | 's' | 'ms' | 'us' | 'ns' = 'auto', timeZone = 'UTC') {
   const result = parseTimestamp(input, unit, NOW, timeZone)
   if (!result.ok) throw new Error(result.error)
   return result.value
@@ -79,5 +79,33 @@ describe('formatRelative', () => {
     expect(formatRelative(new Date('2026-10-21T07:00:00Z'), NOW)).toBe('1 hour ago')
     expect(formatRelative(new Date('2026-10-23T08:00:00Z'), NOW)).toBe('in 2 days')
     expect(formatRelative(NOW, NOW)).toBe('now')
+  })
+})
+
+describe('microsecond and nanosecond inputs', () => {
+  it('detects 16-digit microseconds', () => {
+    const v = value('1700000000000000')
+    expect(v.detectedUnit).toBe('us')
+    expect(v.iso).toBe('2023-11-14T22:13:20.000Z')
+  })
+
+  it('detects 19-digit nanoseconds', () => {
+    const v = value('1700000000000000000')
+    expect(v.detectedUnit).toBe('ns')
+    expect(v.iso).toBe('2023-11-14T22:13:20.000Z')
+  })
+
+  it('honours an explicit microsecond or nanosecond unit', () => {
+    expect(value('1700000000000000', 'us').iso).toBe('2023-11-14T22:13:20.000Z')
+    expect(value('1700000000000000000', 'ns').iso).toBe('2023-11-14T22:13:20.000Z')
+  })
+
+  it('still reads 13-digit values as milliseconds', () => {
+    expect(value('1700000000000').detectedUnit).toBe('ms')
+  })
+
+  it('names the accepted formats in the parse error', () => {
+    const result = parseTimestamp('not a date', 'auto', NOW)
+    expect(!result.ok && result.error).toContain('RFC 2822')
   })
 })

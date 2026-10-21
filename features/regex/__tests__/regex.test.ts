@@ -25,13 +25,31 @@ describe('runRegex', () => {
     ])
   })
 
-  it('always scans globally', () => {
-    expect(matchesOf('a', '', 'aaa').matches).toHaveLength(3)
+  it('returns only the first match without the global flag', () => {
+    const { matches, truncated } = matchesOf('a', '', 'aaa')
+    expect(matches.map((m) => m.index)).toEqual([0])
+    expect(truncated).toBe(false)
+  })
+
+  it('returns every match with the global flag', () => {
+    expect(matchesOf('a', 'g', 'aaa').matches).toHaveLength(3)
+  })
+
+  it('returns a single empty match without the global flag', () => {
+    expect(matchesOf('x*', '', 'abc').matches).toHaveLength(1)
+  })
+
+  it('labels unicode named groups', () => {
+    const { matches } = matchesOf('(?<ñ>a)(?<x>b)', 'g', 'ab')
+    expect(matches[0]?.groups.map((g) => [g.name, g.value])).toEqual([
+      ['ñ', 'a'],
+      ['x', 'b'],
+    ])
   })
 
   it('respects the case-insensitive flag', () => {
-    expect(matchesOf('abc', 'i', 'ABC abc').matches).toHaveLength(2)
-    expect(matchesOf('abc', '', 'ABC abc').matches).toHaveLength(1)
+    expect(matchesOf('abc', 'gi', 'ABC abc').matches).toHaveLength(2)
+    expect(matchesOf('abc', 'g', 'ABC abc').matches).toHaveLength(1)
   })
 
   it('reports numbered and named capture groups', () => {
@@ -89,7 +107,11 @@ describe('runRegex', () => {
 
 describe('captureGroupNames', () => {
   it('ignores non-capturing groups, lookarounds, escapes and classes', () => {
-    expect(captureGroupNames('(?:a)(?<=b)(?!c)\\(([(])(?<n>x)')).toEqual([null, 'n'])
+    expect(captureGroupNames('(?:a)(?<=b)(?<!d)(?!c)\\(([(])(?<n>x)')).toEqual([null, 'n'])
+  })
+
+  it('reads non-ascii group names', () => {
+    expect(captureGroupNames('(?<ñ>a)(?<日本>b)')).toEqual(['ñ', '日本'])
   })
 })
 

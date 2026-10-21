@@ -9,13 +9,30 @@ import { ToolPageHeader } from '@/components/tools/tool-page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-import { type TimestampUnit, parseTimestamp } from './lib'
+import { type NumericUnit, type TimestampUnit, parseTimestamp } from './lib'
 
 const UNIT_OPTIONS: { value: TimestampUnit; label: string }[] = [
   { value: 'auto', label: 'Auto' },
   { value: 's', label: 'Seconds' },
   { value: 'ms', label: 'Milliseconds' },
+  { value: 'us', label: 'Microseconds' },
+  { value: 'ns', label: 'Nanoseconds' },
 ]
+
+const UNIT_NAMES: Record<NumericUnit, string> = {
+  s: 'seconds',
+  ms: 'milliseconds',
+  us: 'microseconds',
+  ns: 'nanoseconds',
+}
+
+function currentTimeIn(unit: TimestampUnit, current: Date): string {
+  const milliseconds = current.getTime()
+  if (unit === 'ms') return String(milliseconds)
+  if (unit === 'us') return String(BigInt(milliseconds) * BigInt(1000))
+  if (unit === 'ns') return String(BigInt(milliseconds) * BigInt(1000000))
+  return String(Math.floor(milliseconds / 1000))
+}
 
 export function TimestampConverter() {
   const [input, setInput] = useState('')
@@ -27,7 +44,7 @@ export function TimestampConverter() {
   const setToNow = () => {
     const current = new Date()
     setNow(current)
-    setInput(String(unit === 'ms' ? current.getTime() : Math.floor(current.getTime() / 1000)))
+    setInput(currentTimeIn(unit, current))
   }
 
   const rows = result.ok
@@ -123,8 +140,7 @@ export function TimestampConverter() {
 
       {result.ok && result.value.detectedUnit && (
         <p className="text-muted-foreground mt-3 text-xs">
-          Interpreted as {result.value.detectedUnit === 's' ? 'seconds' : 'milliseconds'} since the
-          Unix epoch.
+          Interpreted as {UNIT_NAMES[result.value.detectedUnit]} since the Unix epoch.
         </p>
       )}
       <p className="text-muted-foreground mt-3 text-xs">

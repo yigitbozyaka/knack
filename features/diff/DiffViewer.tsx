@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { DiffIcon } from 'lucide-react'
 
@@ -19,6 +19,21 @@ import {
 } from './lib'
 
 type ViewMode = 'unified' | 'split'
+
+const DEBOUNCE_MS = 250
+
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebounced(value)
+    }, delayMs)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [value, delayMs])
+  return debounced
+}
 
 const ROW_STYLES: Record<RowKind, string> = {
   context: '',
@@ -68,7 +83,13 @@ export function DiffViewer() {
   const [mode, setMode] = useState<DiffMode>('line')
   const [view, setView] = useState<ViewMode>('unified')
 
-  const result = useMemo(() => computeDiff(original, modified, mode), [original, modified, mode])
+  const debouncedOriginal = useDebounced(original, DEBOUNCE_MS)
+  const debouncedModified = useDebounced(modified, DEBOUNCE_MS)
+
+  const result = useMemo(
+    () => computeDiff(debouncedOriginal, debouncedModified, mode),
+    [debouncedOriginal, debouncedModified, mode],
+  )
 
   return (
     <>
@@ -157,6 +178,16 @@ export function DiffViewer() {
         <p className="text-destructive text-sm" role="alert">
           {result.error}
         </p>
+      )}
+
+      {result.ok && result.notes.length > 0 && (
+        <ul className="text-muted-foreground mb-3 space-y-1 text-xs" data-testid="diff-notes">
+          {result.notes.map((note) => (
+            <li key={note} role="status">
+              {note}
+            </li>
+          ))}
+        </ul>
       )}
 
       {result.ok && view === 'unified' && (

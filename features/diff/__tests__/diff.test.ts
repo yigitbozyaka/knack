@@ -53,6 +53,32 @@ describe('line diff', () => {
     expect(result.stats).toEqual({ added: 1, removed: 0, unchanged: 2 })
   })
 
+  it('flags a trailing newline that exists on only one side', () => {
+    const result = ok('a\nb', 'a\nb\n', 'line')
+    expect(result.stats).toEqual({ added: 0, removed: 0, unchanged: 2 })
+    expect(result.notes).toHaveLength(1)
+    expect(result.notes[0]).toContain('No newline at end of file (original)')
+    expect(ok('a\nb\n', 'a\nb', 'line').notes[0]).toContain('(modified)')
+  })
+
+  it('adds no note when both sides end the same way', () => {
+    expect(ok('a\nb', 'a\nc', 'line').notes).toEqual([])
+    expect(ok('a\n', 'b\n', 'line').notes).toEqual([])
+  })
+
+  it('warns when line endings differ', () => {
+    const result = ok('a\r\nb\r\n', 'a\nb\n', 'line')
+    expect(result.stats.added).toBe(0)
+    expect(result.notes).toHaveLength(1)
+    expect(result.notes[0]).toContain('CRLF')
+    expect(result.notes[0]).toContain('LF')
+  })
+
+  it('does not warn when line endings match', () => {
+    expect(ok('a\r\nb', 'a\r\nc', 'line').notes).toEqual([])
+    expect(ok('single', 'line', 'line').notes).toEqual([])
+  })
+
   it('handles empty inputs', () => {
     const result = ok('', '', 'line')
     expect(result.unified).toEqual([])

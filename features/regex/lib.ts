@@ -49,7 +49,7 @@ export function captureGroupNames(pattern: string): (string | null)[] {
       if (pattern[i + 1] !== '?') {
         names.push(null)
       } else {
-        const named = /^\(\?<([A-Za-z_$][\w$]*)>/.exec(pattern.slice(i))
+        const named = /^\(\?<([^>=!][^>]*)>/.exec(pattern.slice(i))
         if (named) names.push(named[1] ?? null)
       }
     }
@@ -91,9 +91,11 @@ export function runRegex(pattern: string, flags: string, text: string): RegexRes
     }
   }
 
+  const effectiveFlags = sanitizeFlags(flags)
+  const global = effectiveFlags.includes('g')
   let regex: RegExp
   try {
-    regex = new RegExp(pattern, sanitizeFlags(flags).replace('g', '') + 'g')
+    regex = new RegExp(pattern, effectiveFlags)
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Invalid pattern.' }
   }
@@ -118,6 +120,7 @@ export function runRegex(pattern: string, flags: string, text: string): RegexRes
         value: (value as string | undefined) ?? null,
       })),
     })
+    if (!global) break
     if (result[0] === '') {
       regex.lastIndex = nextIndexAfterEmptyMatch(text, regex.lastIndex, regex.unicode)
       if (regex.lastIndex > text.length) break

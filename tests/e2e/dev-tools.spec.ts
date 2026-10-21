@@ -27,6 +27,36 @@ test.describe('Regex tester', () => {
   })
 })
 
+test.describe('Regex tester safety', () => {
+  test('reports a catastrophic pattern and stays responsive', async ({ page }) => {
+    await page.goto('/regex')
+    await page.getByLabel('Test string').fill('a'.repeat(30) + 'b')
+    await page.getByLabel('Pattern').fill('(a+)+$')
+    await expect(page.getByTestId('regex-timeout')).toHaveText('Pattern too slow', {
+      timeout: 10_000,
+    })
+    await page.getByLabel('Pattern').fill('b')
+    await expect(page.getByTestId('regex-timeout')).toHaveCount(0)
+    await expect(page.getByTestId('regex-count')).toHaveText('1 match')
+  })
+
+  test('shows only the first match when the global flag is off', async ({ page }) => {
+    await page.goto('/regex')
+    await page.getByLabel('Pattern').fill('a')
+    await page.getByLabel('Test string').fill('aaa')
+    await expect(page.getByTestId('regex-count')).toHaveText('3 matches')
+    await page.getByRole('button', { name: 'g', exact: true }).click()
+    await expect(page.getByTestId('regex-count')).toHaveText('1 match')
+  })
+
+  test('labels unicode named groups', async ({ page }) => {
+    await page.goto('/regex')
+    await page.getByLabel('Pattern').fill('(?<ñ>a)(?<x>b)')
+    await page.getByLabel('Test string').fill('ab')
+    await expect(page.getByTestId('regex-row').first()).toContainText('ñ: a')
+  })
+})
+
 test.describe('Text diff', () => {
   test('shows added and removed lines', async ({ page }) => {
     await page.goto('/diff')
@@ -35,6 +65,13 @@ test.describe('Text diff', () => {
     await expect(page.getByTestId('diff-stats')).toContainText('+2')
     await expect(page.locator('[data-testid="diff-row"][data-kind="add"]')).toHaveCount(2)
     await expect(page.locator('[data-testid="diff-row"][data-kind="remove"]')).toHaveCount(1)
+  })
+
+  test('flags a trailing newline and differing line endings', async ({ page }) => {
+    await page.goto('/diff')
+    await page.getByLabel('Original').fill('one\ntwo')
+    await page.getByLabel('Modified').fill('one\ntwo\n')
+    await expect(page.getByTestId('diff-notes')).toContainText('No newline at end of file')
   })
 
   test('switches to side by side and word mode', async ({ page }) => {

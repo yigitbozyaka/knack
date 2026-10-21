@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import { RegexIcon } from 'lucide-react'
 
@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
-import { MAX_MATCHES, type RegexFlag, VALID_FLAGS, runRegex, toggleFlag } from './lib'
+import { MAX_MATCHES, type RegexFlag, VALID_FLAGS, toggleFlag } from './lib'
+import { useRegexRunner } from './useRegexRunner'
 
 const FLAG_LABELS: Record<RegexFlag, string> = {
   g: 'global',
@@ -26,7 +27,7 @@ export function RegexTester() {
   const [flags, setFlags] = useState('g')
   const [text, setText] = useState('mail ada@example.com or bob@knack.com today')
 
-  const result = useMemo(() => runRegex(pattern, flags, text), [pattern, flags, text])
+  const { result, timedOut } = useRegexRunner(pattern, flags, text)
 
   return (
     <>
@@ -54,13 +55,18 @@ export function RegexTester() {
             spellCheck={false}
             autoComplete="off"
             className="font-mono"
-            aria-invalid={!result.ok}
+            aria-invalid={result !== null && !result.ok}
           />
           <span className="text-muted-foreground font-mono">/{flags}</span>
         </div>
-        {!result.ok && (
+        {result !== null && !result.ok && (
           <p className="text-destructive text-xs" role="alert" data-testid="regex-error">
             {result.error}
+          </p>
+        )}
+        {timedOut && (
+          <p className="text-destructive text-xs" role="alert" data-testid="regex-timeout">
+            Pattern too slow
           </p>
         )}
       </div>
@@ -105,7 +111,7 @@ export function RegexTester() {
           Highlighted
         </span>
         <span className="text-muted-foreground text-xs" data-testid="regex-count">
-          {result.ok
+          {result?.ok
             ? `${String(result.matches.length)}${result.truncated ? '+' : ''} ${
                 result.matches.length === 1 && !result.truncated ? 'match' : 'matches'
               }`
@@ -116,7 +122,7 @@ export function RegexTester() {
         data-testid="regex-highlight"
         className="border-border bg-muted/30 mb-2 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-sm break-all whitespace-pre-wrap"
       >
-        {result.ok ? (
+        {result?.ok ? (
           result.segments.map((segment, i) =>
             segment.matchIndex === null ? (
               <span key={i}>{segment.text}</span>
@@ -137,13 +143,13 @@ export function RegexTester() {
           <span className="text-muted-foreground">{text}</span>
         )}
       </pre>
-      {result.ok && result.truncated && (
+      {result?.ok && result.truncated && (
         <p className="text-muted-foreground mb-4 text-xs" role="status">
           Showing the first {MAX_MATCHES} matches only.
         </p>
       )}
 
-      {result.ok && result.matches.length > 0 && (
+      {result?.ok && result.matches.length > 0 && (
         <div className="mt-6 overflow-x-auto">
           <table className="w-full text-left text-sm" data-testid="regex-groups">
             <caption className="text-muted-foreground mb-2 text-left text-xs font-medium tracking-wide uppercase">
