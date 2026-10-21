@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { HASH_ALGORITHMS, hashAll, hashText } from '../lib'
 
@@ -39,5 +39,16 @@ describe('hashAll', () => {
     expect(results['SHA-256']).toHaveLength(64)
     expect(results['SHA-384']).toHaveLength(96)
     expect(results['SHA-512']).toHaveLength(128)
+  })
+})
+
+describe('hashAll without Web Crypto', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('rejects when crypto.subtle is unavailable', async () => {
+    vi.stubGlobal('crypto', {})
+    await expect(hashAll('abc')).rejects.toThrow()
   })
 })

@@ -17,18 +17,24 @@ interface Computed {
 export function HashGenerator() {
   const [input, setInput] = useState('')
   const [computed, setComputed] = useState<Computed | null>(null)
+  const [failedInput, setFailedInput] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    void hashAll(input).then((results) => {
-      if (!cancelled) setComputed({ input, results })
-    })
+    hashAll(input)
+      .then((results) => {
+        if (!cancelled) setComputed({ input, results })
+      })
+      .catch(() => {
+        if (!cancelled) setFailedInput(input)
+      })
     return () => {
       cancelled = true
     }
   }, [input])
 
   const results = computed?.input === input ? computed.results : null
+  const failed = failedInput === input
 
   return (
     <>
@@ -56,6 +62,12 @@ export function HashGenerator() {
           className="border-border bg-muted/30 focus:ring-ring h-40 w-full resize-y rounded-lg border p-3 font-mono text-sm outline-none focus:ring-2"
         />
       </div>
+
+      {failed && (
+        <p className="text-destructive mb-4 text-sm" role="alert" data-testid="hash-error">
+          Hashing is unavailable: the Web Crypto API requires a secure context (HTTPS or localhost).
+        </p>
+      )}
 
       <ul className="mb-4 space-y-3">
         {HASH_ALGORITHMS.map((algorithm) => {

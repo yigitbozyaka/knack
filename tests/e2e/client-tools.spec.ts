@@ -157,6 +157,15 @@ test.describe('Hash generator', () => {
     )
     await expect(page.locator('[data-testid="hash-output-sha-512"]')).toHaveText(/^ddaf35a1/)
   })
+
+  test('shows an error when Web Crypto is unavailable', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Crypto.prototype, 'subtle', { get: () => undefined })
+    })
+    await page.goto('/hash')
+    await page.getByLabel('Input', { exact: true }).fill('abc')
+    await expect(page.getByTestId('hash-error')).toBeVisible()
+  })
 })
 
 test.describe('JWT decoder', () => {
@@ -169,6 +178,14 @@ test.describe('JWT decoder', () => {
     await expect(page.getByTestId('jwt-expired-badge')).toBeVisible()
     await expect(page.getByTestId('jwt-exp')).toHaveText('2018-01-18T01:30:23.000Z')
     await expect(page.getByTestId('jwt-result')).toContainText('"name": "John Doe"')
+  })
+
+  test('shows no time claims badge when exp and nbf are absent', async ({ page }) => {
+    await page.goto('/jwt')
+    await page.getByLabel('Token', { exact: true }).fill('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhIn0.')
+    await expect(page.getByTestId('jwt-no-time-claims')).toBeVisible()
+    await expect(page.getByText('Time claims OK')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Copy signature' })).toHaveCount(0)
   })
 
   test('shows an error for a malformed token', async ({ page }) => {

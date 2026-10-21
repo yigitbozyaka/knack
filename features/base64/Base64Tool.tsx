@@ -42,6 +42,7 @@ export function Base64Tool() {
             key={m}
             variant={mode === m ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={mode === m}
             onClick={() => {
               setMode(m)
             }}

@@ -47,10 +47,20 @@ describe('HTML entities', () => {
     expect(decodeHtml('&amp;lt;')).toBe('&lt;')
   })
 
-  it('leaves unknown or invalid entities as-is', () => {
-    expect(decodeHtml('&unknown; &#0; &#xD800; &#99999999; &amp')).toBe(
-      '&unknown; &#0; &#xD800; &#99999999; &amp',
-    )
+  it('accepts an uppercase hex marker', () => {
+    expect(decodeHtml('&#X41; &#x41;')).toBe('A A')
+  })
+
+  it('leaves unknown named entities and bare ampersands as-is', () => {
+    expect(decodeHtml('&unknown; &amp')).toBe('&unknown; &amp')
+  })
+
+  it('maps invalid numeric entities to the replacement character', () => {
+    expect(decodeHtml('&#0;')).toBe('\uFFFD')
+    expect(decodeHtml('&#xD800;')).toBe('\uFFFD')
+    expect(decodeHtml('&#xDFFF;')).toBe('\uFFFD')
+    expect(decodeHtml('&#x110000;')).toBe('\uFFFD')
+    expect(decodeHtml('&#99999999;')).toBe('\uFFFD')
   })
 
   it('round-trips encoded text', () => {

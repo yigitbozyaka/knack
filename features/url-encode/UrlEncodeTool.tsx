@@ -48,6 +48,7 @@ export function UrlEncodeTool() {
             key={f}
             variant={format === f ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={format === f}
             onClick={() => {
               setFormat(f)
             }}
@@ -61,6 +62,7 @@ export function UrlEncodeTool() {
             key={d}
             variant={direction === d ? 'default' : 'outline'}
             size="sm"
+            aria-pressed={direction === d}
             onClick={() => {
               setDirection(d)
             }}

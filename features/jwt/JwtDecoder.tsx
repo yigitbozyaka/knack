@@ -14,6 +14,10 @@ import { type DecodedJwt, decodeJwt } from './lib'
 const CLAIM_LABELS = { exp: 'Expires', iat: 'Issued at', nbf: 'Not before' } as const
 
 function JwtDetails({ token }: { token: DecodedJwt }) {
+  const hasValidityWindow = token.timeClaims.some(
+    (info) => info.claim === 'exp' || info.claim === 'nbf',
+  )
+
   return (
     <div className="space-y-4" data-testid="jwt-result">
       <div className="flex flex-wrap gap-2">
@@ -33,9 +37,17 @@ function JwtDetails({ token }: { token: DecodedJwt }) {
             Not yet valid
           </span>
         )}
-        {!token.expired && !token.notYetValid && (
+        {!token.expired && !token.notYetValid && hasValidityWindow && (
           <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600 dark:text-green-400">
             Time claims OK
+          </span>
+        )}
+        {!hasValidityWindow && (
+          <span
+            data-testid="jwt-no-time-claims"
+            className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs font-medium"
+          >
+            No time claims
           </span>
         )}
       </div>
@@ -67,7 +79,9 @@ function JwtDetails({ token }: { token: DecodedJwt }) {
           </div>
           <span className="block font-mono text-sm break-all">{token.signature || '—'}</span>
         </div>
-        <CopyButton value={token.signature} size="icon-sm" label="Copy signature" />
+        {token.signature !== '' && (
+          <CopyButton value={token.signature} size="icon-sm" label="Copy signature" />
+        )}
       </div>
     </div>
   )

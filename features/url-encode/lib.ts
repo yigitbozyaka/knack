@@ -41,6 +41,7 @@ const NAMED_ENTITIES: Record<string, string> = {
 }
 
 const MAX_CODE_POINT = 0x10ffff
+const REPLACEMENT_CHAR = 0xfffd
 
 export function encodeUrl(text: string): string {
   return encodeURIComponent(text)
@@ -60,12 +61,12 @@ export function encodeHtml(text: string): string {
 
 export function decodeHtml(input: string): string {
   return input.replace(
-    /&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z][a-zA-Z0-9]*);/g,
+    /&(#[xX][0-9a-fA-F]+|#[0-9]+|[a-zA-Z][a-zA-Z0-9]*);/g,
     (match, body: string) => {
       if (body.startsWith('#')) {
         const isHex = body[1] === 'x' || body[1] === 'X'
         const codePoint = parseInt(body.slice(isHex ? 2 : 1), isHex ? 16 : 10)
-        return isValidCodePoint(codePoint) ? String.fromCodePoint(codePoint) : match
+        return String.fromCodePoint(isValidCodePoint(codePoint) ? codePoint : REPLACEMENT_CHAR)
       }
       return NAMED_ENTITIES[body] ?? match
     },
