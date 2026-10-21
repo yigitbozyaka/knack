@@ -112,7 +112,7 @@ export function validateUrl(input: string): URL {
 }
 
 async function ensureHostnameIsPublic(hostname: string): Promise<void> {
-  const addresses = await lookup(hostname, { all: true, verbatim: false })
+  const addresses = await lookup(hostname, { all: true, order: 'ipv4first' })
   for (const { address, family } of addresses) {
     if (family === 4 && isPrivateIPv4(address)) {
       throw new SsrfError(`Hostname resolves to private IPv4: ${hostname} -> ${address}`)
