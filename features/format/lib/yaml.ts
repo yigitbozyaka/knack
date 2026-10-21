@@ -1,6 +1,8 @@
-import { YAMLException, dump, load } from 'js-yaml'
+import { CORE_SCHEMA, YAMLException, dump, load, mergeTag } from 'js-yaml'
 
 import { type FormatResult } from './types'
+
+const schema = CORE_SCHEMA.withTags(mergeTag)
 
 function yamlError(err: unknown): FormatResult {
   if (err instanceof YAMLException) {
@@ -8,8 +10,7 @@ function yamlError(err: unknown): FormatResult {
       ok: false,
       error: {
         message: err.reason,
-        line: err.mark.line + 1,
-        col: err.mark.column + 1,
+        ...(err.mark && { line: err.mark.line + 1, col: err.mark.column + 1 }),
       },
     }
   }
@@ -17,8 +18,9 @@ function yamlError(err: unknown): FormatResult {
 }
 
 export function format(input: string): FormatResult {
+  if (input.trim() === '') return { ok: true, output: '' }
   try {
-    const parsed = load(input)
+    const parsed = load(input, { schema })
     return { ok: true, output: dump(parsed, { indent: 2, lineWidth: -1 }) }
   } catch (err) {
     return yamlError(err)
@@ -26,8 +28,9 @@ export function format(input: string): FormatResult {
 }
 
 export function validate(input: string): FormatResult {
+  if (input.trim() === '') return { ok: true, output: '✓ Valid YAML' }
   try {
-    load(input)
+    load(input, { schema })
     return { ok: true, output: '✓ Valid YAML' }
   } catch (err) {
     return yamlError(err)

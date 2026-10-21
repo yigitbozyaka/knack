@@ -72,6 +72,31 @@ describe('YAML', () => {
   it('validate: error for invalid YAML', () => {
     expect(yaml.validate(INVALID_YAML).ok).toBe(false)
   })
+
+  it('format: resolves << merge keys', () => {
+    const r = yaml.format('base: &base\n  a: 1\nchild:\n  <<: *base\n  b: 2\n')
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.output).toBe('base:\n  a: 1\nchild:\n  a: 1\n  b: 2\n')
+  })
+
+  it('format: keeps yes and no as strings', () => {
+    const r = yaml.format('answer: yes\nother: no\n')
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.output).toBe("answer: 'yes'\nother: 'no'\n")
+  })
+
+  it('format: empty input yields empty output', () => {
+    expect(yaml.format('')).toEqual({ ok: true, output: '' })
+    expect(yaml.format('  \n')).toEqual({ ok: true, output: '' })
+  })
+
+  it('validate: empty input is valid', () => {
+    expect(yaml.validate('').ok).toBe(true)
+  })
+
+  it('validate: merge keys are accepted', () => {
+    expect(yaml.validate('a: &x {b: 1}\nc:\n  <<: *x\n').ok).toBe(true)
+  })
 })
 
 describe('XML', () => {
